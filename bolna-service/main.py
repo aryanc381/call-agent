@@ -1,21 +1,29 @@
+import logging
+
 from fastapi import FastAPI, HTTPException
 
 from models import SessionRequest, SessionResponse
 from orchestrator import run_session
 
 app = FastAPI(title="call-agent media service")
+logger = logging.getLogger("call-agent.media")
 
 
 @app.get("/health")
 async def health() -> dict[str, str]:
     """Returns a liveness response without contacting providers."""
+    logger.info("health check passed")
     return {"status": "ok"}
 
 
 @app.post("/v1/sessions", response_model=SessionResponse)
 async def create_session(request: SessionRequest) -> SessionResponse:
     """/** usage: runs one audio question through STT, LLM, and TTS. req.body: {audioBase64, audioContentType, contact, question, context, personality, isFirstCall}. res.body: {sessionId, transcript, answer, audioBase64, audioContentType} */"""
+    logger.info("session request received audio_bytes=%s content_type=%s", len(request.audioBase64), request.audioContentType)
     try:
-        return await run_session(request)
+        result = await run_session(request)
+        logger.info("session completed session_id=%s transcript_chars=%s answer_chars=%s audio_chars=%s", result.sessionId, len(result.transcript), len(result.answer), len(result.audioBase64))
+        return result
     except Exception as error:
+        logger.exception("session failed error_type=%s", type(error).__name__)
         raise HTTPException(status_code=502, detail="Media provider request failed") from error

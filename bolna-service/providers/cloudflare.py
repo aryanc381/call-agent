@@ -1,8 +1,11 @@
 import base64
+import logging
 
 import httpx
 
 from config import settings
+
+logger = logging.getLogger("call-agent.media")
 
 
 def _headers() -> dict[str, str]:
@@ -12,12 +15,12 @@ def _headers() -> dict[str, str]:
 async def transcribe(audio: bytes, content_type: str) -> str:
     """Transcribes audio with Cloudflare's documented Grok STT endpoint."""
     data_uri = f"data:{content_type};base64,{base64.b64encode(audio).decode()}"
-    url = (
-        f"https://api.cloudflare.com/client/v4/accounts/"
-        f"{settings.cloudflare_account_id}/ai/run?model={settings.cloudflare_stt_model}"
-    )
+    url = f"https://api.cloudflare.com/client/v4/accounts/{settings.cloudflare_account_id}/ai/run"
     async with httpx.AsyncClient(timeout=60) as client:
-        response = await client.post(url, headers=_headers(), json={"file": data_uri})
+        response = await client.post(url, headers={**_headers(), "Content-Type": "application/json"}, json={"model": settings.cloudflare_stt_model, "input": {"file": data_uri}})
+        logger.info("provider=cloudflare stage=stt status=%s", response.status_code)
+        if response.is_error:
+            logger.error("provider=cloudflare stage=stt error=%s", response.text[:500])
         response.raise_for_status()
     payload = response.json()
     result = payload.get("result", payload)
@@ -37,5 +40,8 @@ async def complete(prompt: str) -> str:
     }
     async with httpx.AsyncClient(timeout=60) as client:
         response = await client.post(url, headers=_headers(), json=body)
+        logger.info("provider=cloudflare stage=llm status=%s", response.status_code)
+        if response.is_error:
+            logger.error("provider=cloudflare stage=llm error=%s", response.text[:500])
         response.raise_for_status()
     return response.json()["choices"][0]["message"]["content"].strip()

@@ -13,6 +13,7 @@ export function createVobizWebhookRouter(publicBaseUrl: string | undefined, call
    res.body: VobizXML Stream response
    */
   router.post('/answer/:taskId', (request, response) => {
+    console.log(`[vobiz] answer callback task=${request.params.taskId}`);
     if (!publicBaseUrl) {
       response.sendStatus(503);
       return;
@@ -29,6 +30,7 @@ export function createVobizWebhookRouter(publicBaseUrl: string | undefined, call
    res.body: none
    */
   router.post('/stream-status/:taskId', async (request, response) => {
+    console.log(`[vobiz] stream status task=${request.params.taskId} status=${request.body?.StreamStatus ?? request.body?.Event ?? 'unknown'}`);
     if (request.body?.StreamStatus === 'failed') await failProviderCallTask(callTasks, request.params.taskId, 'Vobiz media stream failed');
     response.sendStatus(204);
   });
@@ -39,6 +41,7 @@ export function createVobizWebhookRouter(publicBaseUrl: string | undefined, call
    res.body: none
    */
   router.post('/hangup/:taskId', async (request, response) => {
+    console.log(`[vobiz] hangup callback task=${request.params.taskId} cause=${request.body?.HangupCause ?? 'unknown'}`);
     if (request.body?.HangupCause && request.body.HangupCause !== 'normal_clearing') await failProviderCallTask(callTasks, request.params.taskId, String(request.body.HangupCause));
     response.sendStatus(204);
   });

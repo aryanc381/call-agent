@@ -16,7 +16,11 @@ export function createVobizMediaServer(server: Server, { callTasks, contacts }: 
   const sockets = new WebSocketServer({ noServer: true });
   server.on('upgrade', (request, socket, head) => {
     const match = request.url?.match(/^\/webhooks\/vobiz\/media\/([^/?]+)/);
-    if (!match) return socket.destroy();
+    if (!match) {
+      console.warn(`[vobiz] rejected websocket path=${request.url}`);
+      return socket.destroy();
+    }
+    console.log(`[vobiz] websocket upgrade task=${match[1]}`);
     sockets.handleUpgrade(request, socket, head, (client) => handleSocket(client, match[1], callTasks, contacts));
   });
 }
@@ -29,6 +33,7 @@ function handleSocket(client: WebSocket, taskId: string, callTasks: Collection<C
   let processing = false;
   client.on('message', async (raw) => {
     const event = JSON.parse(String(raw)) as { event: string; start?: { streamId?: string; streamSid?: string }; media?: { payload: string }; name?: string };
+    console.log(`[vobiz] event=${event.event} task=${taskId}`);
     if (event.event === 'start') {
       streamId = event.start?.streamId ?? event.start?.streamSid ?? '';
       await markCallTaskConnected(callTasks, taskId);
@@ -50,6 +55,7 @@ function handleSocket(client: WebSocket, taskId: string, callTasks: Collection<C
             const turn = frames;
             frames = [];
             processing = true;
+            console.log(`[vobiz] turn detected task=${taskId} frames=${turn.length}`);
             void finishTurn(client, taskId, streamId, turn, callTasks, contacts, false, () => { playing = true; }).finally(() => { processing = false; });
           }
         }, 1_200);
@@ -77,11 +83,13 @@ function isSpeech(frame: Buffer) {
 
 async function finishTurn(client: WebSocket, taskId: string, streamId: string, frames: Buffer[], callTasks: Collection<CallTaskDocument>, contacts: Collection<ContactDocument>, terminal: boolean, onAudioStart: () => void) {
   try {
+    console.log(`[vobiz] turn processing task=${taskId} terminal=${terminal} frames=${frames.length}`);
     const task = await callTasks.findOne({ _id: new ObjectId(taskId) });
     if (!task) throw new Error('Call task not found');
     const contact = await contacts.findOne({ _id: task.contactId });
     if (!contact) throw new Error('Contact not found');
     const session = await runBolnaSession({ ...task.request, contact: { name: contact.name, relation: contact.relation.relationship, relationDescription: task.request.relation.description, closeness: contact.relation.closeness } }, muLawToWav(frames).toString('base64'), 'audio/wav');
+    console.log(`[vobiz] turn response task=${taskId} transcriptChars=${session.transcript.length} answerChars=${session.answer.length}`);
     const audio = wavToMuLaw(Buffer.from(session.audioBase64, 'base64'));
     onAudioStart();
     for (let offset = 0; offset < audio.length; offset += 160) {
@@ -92,6 +100,7 @@ async function finishTurn(client: WebSocket, taskId: string, streamId: string, f
     client.send(JSON.stringify({ event: 'checkpoint', streamId, name: `response-${Date.now()}` }));
     if (terminal) await completeProviderCallTask(callTasks, taskId, { confirmedAnswer: session.answer, transcript: [{ speaker: 'contact', text: session.transcript, startedAtMs: 0, endedAtMs: 0 }], endedAt: new Date() });
   } catch (error) {
+    console.error(`[vobiz] turn failed task=${taskId} error=${error instanceof Error ? error.message : String(error)}`);
     if (terminal) await failProviderCallTask(callTasks, taskId, error instanceof Error ? error.message : String(error));
   }
 }

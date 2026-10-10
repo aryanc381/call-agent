@@ -14,7 +14,7 @@ async def synthesize(text: str) -> tuple[bytes, str]:
         "model_id": settings.cartesia_model_id,
         "transcript": text,
         "voice": {"mode": "id", "id": settings.cartesia_voice_id},
-        "output_format": {"container": "wav", "encoding": "pcm_s16le", "sample_rate": 16000},
+        "output_format": {"container": "wav", "encoding": "pcm_s16le", "sample_rate": 8000},
     }
     headers = {
         "X-API-Key": settings.cartesia_api_key,

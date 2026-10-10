@@ -34,8 +34,14 @@ export function muLawToWav(payloads: Buffer[]) {
 
 // Converts a Cartesia PCM16 WAV response into the μ-law payload Vobiz expects.
 export function wavToMuLaw(wav: Buffer) {
+  if (wav.toString('ascii', 0, 4) !== 'RIFF' || wav.toString('ascii', 8, 12) !== 'WAVE') throw new Error('Cartesia response is not a WAV payload');
+  const formatOffset = wav.indexOf(Buffer.from('fmt '));
   const dataOffset = wav.indexOf(Buffer.from('data'));
-  if (dataOffset < 0) throw new Error('Cartesia response is not a WAV payload');
+  if (formatOffset < 0 || dataOffset < 0) throw new Error('Cartesia response is missing WAV chunks');
+  const channels = wav.readUInt16LE(formatOffset + 10);
+  const sampleRate = wav.readUInt32LE(formatOffset + 12);
+  const bitsPerSample = wav.readUInt16LE(formatOffset + 22);
+  if (channels !== 1 || sampleRate !== 8000 || bitsPerSample !== 16) throw new Error('Cartesia WAV must be mono PCM16 at 8000 Hz');
   const pcm = wav.subarray(dataOffset + 8);
   const output = Buffer.alloc(Math.floor(pcm.length / 2));
   for (let index = 0; index < output.length; index += 1) output[index] = pcmToMuLaw(pcm.readInt16LE(index * 2));

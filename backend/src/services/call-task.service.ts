@@ -8,6 +8,7 @@ import type {
   CallTaskDocument,
   CallTaskInput,
   CallTaskJob,
+  CallTaskResult,
 } from '../types/call-task.js';
 
 // Creates a queued call task and adds one matching job to BullMQ.
@@ -36,6 +37,8 @@ export async function createCallTask(
       isFirstCall: input.isFirstCall,
     },
     status: 'queued',
+    processing: null,
+    result: null,
     createdAt: now,
     updatedAt: now,
   };
@@ -67,6 +70,98 @@ export async function createCallTask(
   return { task: toCallTask(document), created: true };
 }
 
+// Atomically claims a queued task for one worker.
+export async function claimCallTask(
+  callTasks: Collection<CallTaskDocument>,
+  taskId: string,
+  workerId: string,
+  claimToken: string,
+  leaseMilliseconds: number,
+) {
+  if (!ObjectId.isValid(taskId)) {
+    return null;
+  }
+
+  const claimedAt = new Date();
+  const result = await callTasks.updateOne(
+    { _id: new ObjectId(taskId), status: 'queued' },
+    {
+      $set: {
+        status: 'processing',
+        processing: {
+          workerId,
+          claimToken,
+          claimedAt,
+          leaseExpiresAt: new Date(claimedAt.getTime() + leaseMilliseconds),
+        },
+        updatedAt: claimedAt,
+      },
+    },
+  );
+
+  if (result.modifiedCount !== 1) {
+    return null;
+  }
+
+  const document = await callTasks.findOne({ _id: new ObjectId(taskId) });
+
+  return document ? toCallTask(document) : null;
+}
+
+// Marks a claimed task as completed and stores its simulated result.
+export async function completeCallTask(
+  callTasks: Collection<CallTaskDocument>,
+  taskId: string,
+  claimToken: string,
+  taskResult: CallTaskResult,
+) {
+  const result = await callTasks.updateOne(
+    {
+      _id: new ObjectId(taskId),
+      status: 'processing',
+      'processing.claimToken': claimToken,
+    },
+    {
+      $set: {
+        status: 'completed',
+        processing: null,
+        result: taskResult,
+        updatedAt: taskResult.endedAt,
+      },
+    },
+  );
+
+  return result.modifiedCount === 1;
+}
+
+// Marks a claimed task as failed and stores the execution error.
+export async function failCallTask(
+  callTasks: Collection<CallTaskDocument>,
+  taskId: string,
+  claimToken: string,
+  failureReason: string,
+  providerError: string,
+) {
+  const endedAt = new Date();
+  const result = await callTasks.updateOne(
+    {
+      _id: new ObjectId(taskId),
+      status: 'processing',
+      'processing.claimToken': claimToken,
+    },
+    {
+      $set: {
+        status: 'failed',
+        processing: null,
+        result: { endedAt, failureReason, providerError },
+        updatedAt: endedAt,
+      },
+    },
+  );
+
+  return result.modifiedCount === 1;
+}
+
 // Returns one call task by identifier when it exists.
 export async function getCallTask(
   callTasks: Collection<CallTaskDocument>,
@@ -89,6 +184,8 @@ function toCallTask(document: CallTaskDocument): CallTask {
     contactId: document.contactId.toHexString(),
     request: document.request,
     status: document.status,
+    processing: document.processing,
+    result: document.result,
     createdAt: document.createdAt,
     updatedAt: document.updatedAt,
   };

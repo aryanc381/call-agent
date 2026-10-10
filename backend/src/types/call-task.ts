@@ -37,9 +37,33 @@ export const callTaskInputSchema = z
   .strict();
 
 export type CallTaskInput = z.infer<typeof callTaskInputSchema>;
-export type CallTaskStatus = 'queued';
+export type CallTaskStatus =
+  'queued' | 'processing' | 'dialing' | 'connected' | 'completed' | 'failed';
 
 export type CallTaskRequest = Omit<CallTaskInput, 'contactId'>;
+
+export type CallTaskProcessing = {
+  workerId: string;
+  claimToken: string;
+  claimedAt: Date;
+  leaseExpiresAt: Date;
+};
+
+export type CallTaskTranscriptEntry = {
+  speaker: 'agent' | 'contact';
+  text: string;
+  startedAtMs: number;
+  endedAtMs: number;
+};
+
+export type CallTaskResult = {
+  confirmedAnswer?: string;
+  transcript?: CallTaskTranscriptEntry[];
+  durationSeconds?: number;
+  endedAt: Date;
+  failureReason?: string;
+  providerError?: string;
+};
 
 export type CallTaskDocument = {
   _id: ObjectId;
@@ -47,6 +71,8 @@ export type CallTaskDocument = {
   contactId: ObjectId;
   request: CallTaskRequest;
   status: CallTaskStatus;
+  processing: CallTaskProcessing | null;
+  result: CallTaskResult | null;
   createdAt: Date;
   updatedAt: Date;
 };

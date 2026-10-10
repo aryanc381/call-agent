@@ -301,7 +301,7 @@ Prerequisites: MongoDB and Redis configuration.
 
 Redis must use the `noeviction` max-memory policy because BullMQ cannot safely run when queued jobs may be evicted.
 
-Verification: formatting, linting, type checks, builds, and manual smoke paths cover contact/task creation, validation, and duplicate idempotency behavior.
+Verification: formatting, linting, type checks, builds, and manual smoke paths cover contact/task creation, validation, duplicate idempotency behavior, and simulated worker success/failure.
 
 #### Dependency-ordered implementation parts
 
@@ -309,7 +309,7 @@ Verification: formatting, linting, type checks, builds, and manual smoke paths c
 2. **Platform foundation:** add configuration validation, Express app/server setup, personal API-key middleware, MongoDB and Redis clients, and BullMQ setup. Depends on part 1.
 3. **Contacts:** add contact types, model/indexes, service, routes, and a manual smoke path. Depends on part 2.
 4. **Call tasks and queueing:** add task types, model/indexes, idempotency, contact validation, task routes, and BullMQ enqueueing. Depends on part 3.
-5. **Worker lifecycle:** add atomic task claims, lifecycle/result persistence, and a simulated completed/failed executor. Depends on part 4; Vobiz, Bolna, and real notification delivery remain deferred.
+5. **Worker lifecycle:** add atomic task claims, lifecycle/result persistence, and a simulated completed/failed executor. The manual failure smoke path uses the question marker `__simulate_failure__`; Vobiz, Bolna, and real notification delivery remain deferred. Depends on part 4.
 
 #### Pull-request CI
 

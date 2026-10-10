@@ -1,6 +1,5 @@
 import { createApp } from './app.js';
-import { createApiKeyAuth } from './auth.js';
-import { env } from './env.js';
+import { createApiKeyAuth } from './middleware/auth.middleware.js';
 import {
   ensureContactIndexes,
   getContactsCollection,
@@ -9,6 +8,7 @@ import { createMongoClient } from './platform/mongo.js';
 import { createCallTaskQueue } from './platform/queue.js';
 import { createRedisClient } from './platform/redis.js';
 import { isReady } from './platform/readiness.js';
+import { env } from './utils/env.js';
 
 const mongo = createMongoClient(env.mongodbUri);
 const redis = createRedisClient(env.redisUrl);

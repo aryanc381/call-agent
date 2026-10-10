@@ -125,12 +125,16 @@ call-agent/
 ├── backend/                                        #NEW — TypeScript control plane
 │   ├── src/
 │   │   ├── server.ts                                # HTTP + WebSocket server
-│   │   ├── config.ts                                # environment validation
+│   │   ├── utils/
+│   │   │   └── env.ts                               # environment validation
+│   │   ├── middleware/
+│   │   │   └── auth.middleware.ts                   # personal API-key auth
 │   │   ├── routes/
-│   │   │   ├── root.ts                            # versioned API route mount
+│   │   │   ├── root.ts                              # versioned API route mount
 │   │   │   └── contacts/
 │   │   │       └── contacts.route.ts                # contact API
-│   │   │   └── call-tasks.route.ts                  # task API
+│   │   │   └── call-tasks/
+│   │   │       └── call-tasks.route.ts               # task API
 │   │   ├── webhooks/
 │   │   │   └── vobiz.webhook.ts                     # Vobiz status callbacks
 │   │   ├── realtime/
@@ -280,6 +284,7 @@ flowchart TD
 - Put a one-line comment immediately above every function that states what it does.
 - Put a multiline `/** ... */` comment immediately above every route with these three unprefixed lines: `usage: <purpose>`, `req.body: <comma-separated keys or none>`, and `res.body: <response shape>`.
 - Place each feature's route files inside a named subfolder under `routes/`; keep only shared route mounts such as `root.ts` directly in `routes/`.
+- Keep validated environment access in `utils/env.ts` and authentication middleware in `middleware/auth.middleware.ts`; do not scatter environment reads or auth logic through route handlers.
 
 ## Delivery phases
 

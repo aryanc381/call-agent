@@ -311,6 +311,33 @@ Verification: formatting, linting, type checks, builds, and manual smoke paths c
 4. **Call tasks and queueing:** add task types, model/indexes, idempotency, contact validation, task routes, and BullMQ enqueueing. Depends on part 3.
 5. **Worker lifecycle:** add atomic task claims, lifecycle/result persistence, and a simulated completed/failed executor. The manual failure smoke path uses the question marker `__simulate_failure__`; Vobiz, Bolna, and real notification delivery remain deferred. The simulator is temporary and must be removed when real calling is introduced in the Vobiz/Bolna integration phases. Depends on part 4.
 
+#### Phase 1 completion record
+
+Status: **completed and merged into `main`**.
+
+- PR #4 merged the initialization, platform foundation, contacts, call-task API, queueing, and traditional route-to-service structure.
+- PR #5 merged the worker lifecycle, atomic claims, simulated execution, result persistence, Redis startup guard, and temporary simulator rule.
+- Automated test files were intentionally not added; formatting, linting, type checking, builds, and manual E2E smoke tests were used.
+
+Manual E2E smoke cases completed for the full phase:
+
+- `GET /health` returns `200 { status: "ok" }`.
+- `GET /ready` reports dependency readiness and returns unavailable when a required dependency is unavailable.
+- Protected routes reject a missing or invalid personal API key with `401`.
+- Valid contact creation returns `201`.
+- Invalid contact input returns `400`.
+- Duplicate contact phone numbers return `409`.
+- Contact listing returns `200`.
+- Fetching an existing contact returns `200`.
+- Fetching a missing contact returns `404`.
+- Valid call-task creation returns `202` with `status: "queued"`.
+- Reusing a call-task idempotency key returns the existing task ID without creating a second task.
+- Invalid call-task input returns `400`.
+- An unknown contact ID returns `404` and does not create a task.
+- A normal queued task is claimed by the worker and reaches `completed` with a simulated answer and transcript.
+- A task using `question: "__simulate_failure__"` reaches `failed` with failure details.
+- The backend waits for Redis before accepting task requests, preventing startup queue failures.
+
 #### Pull-request CI
 
 Phase 1 establishes a simple GitHub Actions PR CI workflow in `.github/workflows/pull-request.yml`. It runs on every pull request targeting `main` as one direct `backend` job:

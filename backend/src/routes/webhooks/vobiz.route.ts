@@ -3,7 +3,8 @@ import { Router } from 'express';
 // Creates documented Vobiz answer, stream-status, and hangup callback responses.
 export function createVobizWebhookRouter(publicBaseUrl?: string) {
   const router = Router();
-  const baseUrl = publicBaseUrl ?? '';
+  if (!publicBaseUrl) throw new Error('PUBLIC_BASE_URL is required for Vobiz webhooks');
+  const baseUrl = publicBaseUrl;
 
   /**
    usage: gives Vobiz the bidirectional media stream instructions.
@@ -12,7 +13,8 @@ export function createVobizWebhookRouter(publicBaseUrl?: string) {
    */
   router.post('/answer/:taskId', (request, response) => {
     const streamUrl = `${baseUrl.replace(/^http/, 'ws')}/webhooks/vobiz/media/${request.params.taskId}`;
-    response.type('application/xml').send(`<?xml version="1.0"?><Response><Stream bidirectional="true" keepCallAlive="true" contentType="audio/x-mulaw;rate=8000">${streamUrl}</Stream></Response>`);
+    const statusUrl = `${baseUrl}/webhooks/vobiz/stream-status/${request.params.taskId}`;
+    response.type('application/xml').send(`<?xml version="1.0"?><Response><Stream bidirectional="true" keepCallAlive="true" contentType="audio/x-mulaw;rate=8000" statusCallbackUrl="${statusUrl}" statusCallbackMethod="POST">${streamUrl}</Stream></Response>`);
   });
 
   /**

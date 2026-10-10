@@ -119,6 +119,9 @@ The conversation rule is: short first-call intro, ask the primary question, use 
 
 ```text
 call-agent/
+├── .github/
+│   └── workflows/
+│       └── pull-request.yml                       #NEW — TypeScript/Python PR checks
 ├── backend/                                        #NEW — TypeScript control plane
 │   ├── src/
 │   │   ├── server.ts                                # HTTP + WebSocket server
@@ -270,6 +273,15 @@ Outcome: MongoDB models, personal API, Redis/BullMQ queue, atomic task claims, l
 Prerequisites: MongoDB and Redis configuration.
 
 Verification: API tests cover contact/task creation, validation, and duplicate idempotency behavior.
+
+#### Pull-request CI
+
+Phase 1 also establishes GitHub Actions PR CI in `.github/workflows/pull-request.yml`. The workflow runs on every pull request targeting `main` and has independent, path-aware checks for both service directories:
+
+- `backend/**` (TypeScript): install with the lockfile, then run formatting, linting, type checking, and unit/API tests.
+- `bolna-service/**` (Python): install from `requirements.txt`, then run formatting/linting, type checking, and tests.
+
+Changes outside a service directory skip that service's expensive setup while still reporting a successful, explicit skipped check. Both checks must be required GitHub branch-protection status checks before merging a PR. The CI workflow itself is tested by opening a PR that changes each service directory.
 
 ### Phase 2 — Bolna media service
 

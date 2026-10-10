@@ -32,6 +32,7 @@ export function createVobizMediaServer(server: Server, { callTasks, contacts }: 
 
 function handleSocket(client: WebSocket, taskId: string, callTasks: Collection<CallTaskDocument>, contacts: Collection<ContactDocument>, conversations: Map<string, ConversationMessage[]>) {
   let frames: Buffer[] = [];
+  let leadInFrames: Buffer[] = [];
   let streamId = '';
   let silenceTimer: NodeJS.Timeout | undefined;
   let playing = false;
@@ -140,12 +141,19 @@ function handleSocket(client: WebSocket, taskId: string, callTasks: Collection<C
     if (event.event === 'media' && !ending && event.media?.payload && (!event.media.track || event.media.track === 'inbound')) {
       const frame = Buffer.from(event.media.payload, 'base64');
       const speech = isSpeech(frame);
+      if (!hasCallerSpeech && !playing && !speech) {
+        leadInFrames.push(frame);
+        if (leadInFrames.length > 10) leadInFrames.shift();
+      }
       if (speech) {
         if (playing) {
           client.send(JSON.stringify({ event: 'clearAudio', streamId }));
           playing = false;
+          leadInFrames = [];
         }
         hasCallerSpeech = true;
+        frames.push(...leadInFrames);
+        leadInFrames = [];
         frames.push(frame);
         if (silenceTimer) clearTimeout(silenceTimer);
         silenceTimer = undefined;
@@ -177,7 +185,7 @@ function handleSocket(client: WebSocket, taskId: string, callTasks: Collection<C
 function isSpeech(frame: Buffer) {
   let total = 0;
   for (const sample of frame) total += Math.abs(muLawToPcm(sample));
-  return total / Math.max(frame.length, 1) > 700;
+  return total / Math.max(frame.length, 1) > 400;
 }
 
 async function loadSessionRequest(taskId: string, callTasks: Collection<CallTaskDocument>, contacts: Collection<ContactDocument>): Promise<LoadedSessionRequest> {

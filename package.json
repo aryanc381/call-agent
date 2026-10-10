@@ -1,0 +1,13 @@
+{
+  "name": "call-agent",
+  "private": true,
+  "packageManager": "pnpm@12.5.1",
+  "scripts": {
+    "dev": "pnpm --dir backend dev",
+    "build": "pnpm --dir backend build",
+    "typecheck": "pnpm --dir backend typecheck",
+    "lint": "pnpm --dir backend lint",
+    "format": "pnpm --dir backend format",
+    "test": "pnpm --dir backend test"
+  }
+}

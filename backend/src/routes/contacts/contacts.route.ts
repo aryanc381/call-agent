@@ -1,14 +1,14 @@
-import { MongoServerError } from 'mongodb';
 import { Router } from 'express';
+import { MongoServerError } from 'mongodb';
 import type { Collection } from 'mongodb';
 
 import {
   createContact,
   getContact,
   listContacts,
-} from '../services/contact.service.js';
-import { contactInputSchema } from '../types/contact.js';
-import type { ContactDocument } from '../types/contact.js';
+} from '../../services/contact.service.js';
+import type { ContactDocument } from '../../types/contact.js';
+import { contactInputSchema } from '../../types/contact.js';
 
 // Creates the routes used to manage approved call contacts.
 export function createContactsRouter(contacts: Collection<ContactDocument>) {

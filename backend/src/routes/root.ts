@@ -2,7 +2,7 @@ import { Router } from 'express';
 import type { Collection } from 'mongodb';
 import type { RequestHandler } from 'express';
 
-import { createContactsRouter } from './contacts.route.js';
+import { createContactsRouter } from './contacts/contacts.route.js';
 import type { ContactDocument } from '../types/contact.js';
 
 type RootRouterDependencies = {

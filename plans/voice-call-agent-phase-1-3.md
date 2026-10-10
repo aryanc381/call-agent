@@ -128,7 +128,8 @@ call-agent/
 │   │   ├── config.ts                                # environment validation
 │   │   ├── routes/
 │   │   │   ├── root.ts                            # versioned API route mount
-│   │   │   ├── contacts.route.ts                    # contact API
+│   │   │   └── contacts/
+│   │   │       └── contacts.route.ts                # contact API
 │   │   │   └── call-tasks.route.ts                  # task API
 │   │   ├── webhooks/
 │   │   │   └── vobiz.webhook.ts                     # Vobiz status callbacks
@@ -278,6 +279,7 @@ flowchart TD
 - Do not create automated test files. Validate changes with formatting, linting, type checks, builds, and documented manual smoke paths instead.
 - Put a one-line comment immediately above every function that states what it does.
 - Put a multiline `/** ... */` comment immediately above every route with these three unprefixed lines: `usage: <purpose>`, `req.body: <comma-separated keys or none>`, and `res.body: <response shape>`.
+- Place each feature's route files inside a named subfolder under `routes/`; keep only shared route mounts such as `root.ts` directly in `routes/`.
 
 ## Delivery phases
 

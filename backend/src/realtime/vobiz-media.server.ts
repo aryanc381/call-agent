@@ -120,7 +120,8 @@ async function finishTurn(client: WebSocket, taskId: string, streamId: string, f
     const request = await loadSessionRequest(taskId, callTasks, contacts);
     const session = await runBolnaSession({ ...request, isFirstCall: false }, muLawToWav(frames).toString('base64'), 'audio/wav', history) as SessionResponse;
     console.log(`[vobiz] turn response task=${taskId} transcriptChars=${session.transcript.length} answerChars=${session.answer.length}`);
-    history.push({ role: 'user', content: session.transcript }, { role: 'assistant', content: session.answer });
+    if (session.transcript.trim()) history.push({ role: 'user', content: session.transcript });
+    history.push({ role: 'assistant', content: session.answer });
     await playSessionAudio(client, streamId, session, onAudioStart);
     if (terminal) await completeProviderCallTask(callTasks, taskId, { confirmedAnswer: session.answer, transcript: history.map((message) => ({ speaker: message.role === 'user' ? 'contact' : 'agent', text: message.content, startedAtMs: 0, endedAtMs: 0 })), endedAt: new Date() });
   } catch (error) {

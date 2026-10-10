@@ -1,3 +1,5 @@
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 
@@ -8,14 +10,21 @@ class Contact(BaseModel):
     closeness: str = Field(min_length=1)
 
 
+class ConversationMessage(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str = Field(min_length=1)
+
+
 class SessionRequest(BaseModel):
-    audioBase64: str = Field(min_length=1)
-    audioContentType: str = Field(min_length=1)
+    audioBase64: str | None = None
+    audioContentType: str | None = None
     contact: Contact
     question: str = Field(min_length=1)
     context: str = Field(min_length=1)
     personality: str = Field(min_length=1)
+    greeting: str = Field(min_length=1)
     isFirstCall: bool
+    conversationHistory: list[ConversationMessage] = Field(default_factory=list)
 
 
 class SessionResponse(BaseModel):

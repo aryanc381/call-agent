@@ -42,7 +42,8 @@ export function createVobizWebhookRouter(publicBaseUrl: string | undefined, call
    */
   router.post('/hangup/:taskId', async (request, response) => {
     console.log(`[vobiz] hangup callback task=${request.params.taskId} cause=${request.body?.HangupCause ?? 'unknown'}`);
-    if (request.body?.HangupCause && request.body.HangupCause !== 'normal_clearing') await failProviderCallTask(callTasks, request.params.taskId, String(request.body.HangupCause));
+    const hangupCause = String(request.body?.HangupCause ?? '').toLowerCase().replaceAll('_', ' ');
+    if (hangupCause && hangupCause !== 'normal clearing') await failProviderCallTask(callTasks, request.params.taskId, String(request.body.HangupCause));
     response.sendStatus(204);
   });
   return router;

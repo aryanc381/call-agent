@@ -21,7 +21,7 @@ export function createVobizWebhookRouter(publicBaseUrl: string | undefined, call
     const baseUrl = publicBaseUrl;
     const streamUrl = `${baseUrl.replace(/^http/, 'ws')}/webhooks/vobiz/media/${request.params.taskId}`;
     const statusUrl = `${baseUrl}/webhooks/vobiz/stream-status/${request.params.taskId}`;
-    response.type('application/xml').send(`<?xml version="1.0"?><Response><Stream bidirectional="true" keepCallAlive="true" contentType="audio/x-mulaw;rate=8000" statusCallbackUrl="${statusUrl}" statusCallbackMethod="POST">${streamUrl}</Stream></Response>`);
+    response.type('application/xml').send(`<?xml version="1.0"?><Response><Stream bidirectional="true" audioTrack="inbound" keepCallAlive="true" contentType="audio/x-mulaw;rate=8000" statusCallbackUrl="${statusUrl}" statusCallbackMethod="POST">${streamUrl}</Stream></Response>`);
   });
 
   /**

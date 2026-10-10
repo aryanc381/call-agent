@@ -32,13 +32,13 @@ function handleSocket(client: WebSocket, taskId: string, callTasks: Collection<C
   let playing = false;
   let processing = false;
   client.on('message', async (raw) => {
-    const event = JSON.parse(String(raw)) as { event: string; start?: { streamId?: string; streamSid?: string }; media?: { payload: string }; name?: string };
+    const event = JSON.parse(String(raw)) as { event: string; start?: { streamId?: string; streamSid?: string }; media?: { payload: string; track?: string }; name?: string };
     console.log(`[vobiz] event=${event.event} task=${taskId}`);
     if (event.event === 'start') {
       streamId = event.start?.streamId ?? event.start?.streamSid ?? '';
       await markCallTaskConnected(callTasks, taskId);
     }
-    if (event.event === 'media' && event.media?.payload) {
+    if (event.event === 'media' && event.media?.payload && (!event.media.track || event.media.track === 'inbound')) {
       const frame = Buffer.from(event.media.payload, 'base64');
       frames.push(frame);
       if (isSpeech(frame)) {

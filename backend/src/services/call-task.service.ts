@@ -33,6 +33,7 @@ export async function createCallTask(
       relation: input.relation,
       question: input.question,
       context: input.context,
+      completionCriteria: input.completionCriteria,
       personality: input.personality,
       greeting: input.greeting,
       isFirstCall: input.isFirstCall,

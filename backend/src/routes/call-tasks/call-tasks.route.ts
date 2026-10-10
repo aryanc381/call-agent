@@ -30,7 +30,7 @@ export function createCallTasksRouter({
 
   /**
    usage: creates and queues a call task for an approved contact.
-   req.body: contactId, relation, question, context, personality, greeting, isFirstCall
+   req.body: contactId, relation, question, context, completionCriteria, personality, greeting, isFirstCall
    res.body: { task }
    */
   router.post('/', async (request, response) => {

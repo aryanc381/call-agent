@@ -31,6 +31,7 @@ export const callTaskInputSchema = z
     relation: callTaskRelationSchema,
     question: z.string().trim().min(1).max(500),
     context: z.string().trim().min(1).max(2_000),
+    completionCriteria: z.string().trim().min(1).max(1_000),
     personality: z.string().trim().min(1).max(500),
     greeting: z.string().trim().min(1).max(500),
     isFirstCall: z.boolean(),
@@ -64,6 +65,7 @@ export type CallTaskTranscriptEntry = {
 
 export type CallTaskResult = {
   confirmedAnswer?: string;
+  intentComplete?: boolean;
   transcript?: CallTaskTranscriptEntry[];
   durationSeconds?: number;
   endedAt: Date;

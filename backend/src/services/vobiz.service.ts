@@ -9,6 +9,17 @@ function getConfig() {
   return { id: env.vobizAuthId, token: env.vobizAuthToken, baseUrl: env.vobizBaseUrl, from: env.vobizFromNumber };
 }
 
+// Ends one active call using its provider call identifier.
+export async function hangupVobizCall(callId: string) {
+  const settings = getConfig();
+  const response = await fetch(`${settings.baseUrl.replace(/\/+$/, '')}/Account/${encodeURIComponent(settings.id)}/Call/${encodeURIComponent(callId)}`, {
+    method: 'DELETE',
+    headers: { 'X-Auth-ID': settings.id, 'X-Auth-Token': settings.token },
+    signal: AbortSignal.timeout(10_000),
+  });
+  if (!response.ok) throw new Error(`Vobiz hangup failed with ${response.status}`);
+}
+
 // Creates one outbound Vobiz call using the documented Account/{id}/Call contract.
 export async function createVobizCall({ to, answerUrl, hangupUrl }: VobizCallInput) {
   const settings = getConfig();

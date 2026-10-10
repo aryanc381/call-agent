@@ -21,6 +21,7 @@ class SessionRequest(BaseModel):
     contact: Contact
     question: str = Field(min_length=1)
     context: str = Field(min_length=1)
+    completionCriteria: str = Field(min_length=1)
     personality: str = Field(min_length=1)
     greeting: str = Field(min_length=1)
     isFirstCall: bool
@@ -31,5 +32,6 @@ class SessionResponse(BaseModel):
     sessionId: str
     transcript: str
     answer: str
+    intentComplete: bool
     audioBase64: str
     audioContentType: str

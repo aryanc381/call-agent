@@ -8,6 +8,7 @@ class Settings(BaseSettings):
 
     cloudflare_account_id: str
     cloudflare_api_token: str
+    cloudflare_ai_gateway_id: str
     cloudflare_ai_model: str
     cloudflare_stt_model: str
     cartesia_api_key: str

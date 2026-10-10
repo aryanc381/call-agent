@@ -9,7 +9,10 @@ logger = logging.getLogger("call-agent.media")
 
 
 def _headers() -> dict[str, str]:
-    return {"Authorization": f"Bearer {settings.cloudflare_api_token}"}
+    return {
+        "Authorization": f"Bearer {settings.cloudflare_api_token}",
+        "cf-aig-gateway-id": settings.cloudflare_ai_gateway_id,
+    }
 
 
 async def transcribe(audio: bytes, content_type: str) -> str:

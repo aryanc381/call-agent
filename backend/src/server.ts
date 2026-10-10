@@ -8,6 +8,7 @@ import { createMongoClient } from './platform/mongo.js';
 import { createCallTaskQueue } from './platform/queue.js';
 import { createRedisClient } from './platform/redis.js';
 import { isReady } from './platform/readiness.js';
+import { createContactHandlers } from './services/contact.service.js';
 import { env } from './utils/env.js';
 
 const mongo = createMongoClient(env.mongodbUri);
@@ -16,7 +17,7 @@ const callTaskQueue = createCallTaskQueue(redis);
 const contacts = getContactsCollection(mongo.db());
 const app = createApp({
   apiKeyAuth: createApiKeyAuth(env.personalApiKey),
-  contacts,
+  contacts: createContactHandlers(contacts),
   isReady: () => isReady(mongo, redis),
 });
 let server: ReturnType<typeof app.listen> | undefined;

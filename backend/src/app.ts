@@ -1,13 +1,12 @@
 import express from 'express';
-import type { Collection } from 'mongodb';
 import type { RequestHandler } from 'express';
 
 import { createRootRouter } from './routes/root.js';
-import type { ContactDocument } from './types/contact.js';
+import type { ContactRouteHandlers } from './services/contact.service.js';
 
 type AppDependencies = {
   apiKeyAuth: RequestHandler;
-  contacts: Collection<ContactDocument>;
+  contacts: ContactRouteHandlers;
   isReady: () => Promise<boolean>;
 };
 

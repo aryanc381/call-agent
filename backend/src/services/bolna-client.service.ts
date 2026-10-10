@@ -1,16 +1,16 @@
-import type { CallTaskRequest } from '../types/call-task.js';
+import type { CallTaskRequest, ConversationMessage } from '../types/call-task.js';
 import { env } from '../utils/env.js';
 
 type SessionResponse = { sessionId: string; transcript: string; answer: string; audioBase64: string; audioContentType: string };
 type SessionInput = CallTaskRequest & { contact: { name: string; relation: string; relationDescription: string; closeness: string } };
 
 // Sends one audio turn to the Python media plane's stable session contract.
-export async function runBolnaSession(request: SessionInput, audioBase64: string, audioContentType: string) {
+export async function runBolnaSession(request: SessionInput, audioBase64: string | undefined, audioContentType: string | undefined, conversationHistory: ConversationMessage[]) {
   if (!env.mediaServiceBaseUrl) throw new Error('Media service base URL is not configured');
-  console.log(`[media] request start contentType=${audioContentType} audioChars=${audioBase64.length}`);
+  console.log(`[media] request start contentType=${audioContentType ?? 'none'} audioChars=${audioBase64?.length ?? 0} history=${conversationHistory.length}`);
   const response = await fetch(`${env.mediaServiceBaseUrl}/v1/sessions`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ audioBase64, audioContentType, ...request }),
+    body: JSON.stringify({ audioBase64, audioContentType, conversationHistory, ...request }),
   });
   console.log(`[media] response status=${response.status}`);
   if (!response.ok) {

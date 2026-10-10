@@ -34,6 +34,7 @@ export async function createCallTask(
       question: input.question,
       context: input.context,
       personality: input.personality,
+      greeting: input.greeting,
       isFirstCall: input.isFirstCall,
     },
     status: 'queued',

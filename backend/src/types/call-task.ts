@@ -65,6 +65,12 @@ export type CallTaskResult = {
   providerError?: string;
 };
 
+export type CallTaskProvider = {
+  vobizCallId?: string;
+  bolnaCallId?: string;
+  startedAt?: Date;
+};
+
 export type CallTaskDocument = {
   _id: ObjectId;
   idempotencyKey: string;
@@ -72,6 +78,7 @@ export type CallTaskDocument = {
   request: CallTaskRequest;
   status: CallTaskStatus;
   processing: CallTaskProcessing | null;
+  provider: CallTaskProvider | null;
   result: CallTaskResult | null;
   createdAt: Date;
   updatedAt: Date;

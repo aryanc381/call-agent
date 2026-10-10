@@ -26,6 +26,7 @@ const app = createApp({
   callTasks,
   queue: callTaskQueue,
   isReady: () => isReady(mongo, redis),
+  publicBaseUrl: env.publicBaseUrl,
 });
 let server: ReturnType<typeof app.listen> | undefined;
 let callTaskWorker: ReturnType<typeof createCallTaskWorker> | undefined;

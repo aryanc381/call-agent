@@ -23,7 +23,15 @@ async def transcribe(audio: bytes, content_type: str) -> str:
             logger.error("provider=cloudflare stage=stt error=%s", response.text[:500])
         response.raise_for_status()
     payload = response.json()
-    result = payload.get("result", payload)
+    result = payload.get("result")
+    if not isinstance(result, dict) or not isinstance(result.get("text"), str):
+        logger.error(
+            "provider=cloudflare stage=stt invalid_response state=%s payload_keys=%s result_keys=%s",
+            payload.get("state"),
+            sorted(payload.keys()),
+            sorted(result.keys()) if isinstance(result, dict) else [],
+        )
+        raise RuntimeError("Cloudflare STT returned no transcript")
     return result["text"]
 
 

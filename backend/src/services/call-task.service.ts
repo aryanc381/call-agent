@@ -148,6 +148,22 @@ export async function markCallTaskDialing(
   );
 }
 
+// Marks a provider stream connected after Vobiz sends its start event.
+export async function markCallTaskConnected(callTasks: Collection<CallTaskDocument>, taskId: string) {
+  return callTasks.updateOne({ _id: new ObjectId(taskId), status: 'dialing' }, { $set: { status: 'connected', updatedAt: new Date() } });
+}
+
+// Stores a terminal result from the provider media bridge.
+export async function completeProviderCallTask(callTasks: Collection<CallTaskDocument>, taskId: string, result: CallTaskResult) {
+  return callTasks.updateOne({ _id: new ObjectId(taskId), status: { $in: ['connected', 'dialing'] } }, { $set: { status: 'completed', processing: null, result, updatedAt: result.endedAt } });
+}
+
+// Stores a terminal provider failure from the media bridge or callback path.
+export async function failProviderCallTask(callTasks: Collection<CallTaskDocument>, taskId: string, failureReason: string) {
+  const endedAt = new Date();
+  return callTasks.updateOne({ _id: new ObjectId(taskId), status: { $in: ['connected', 'dialing', 'processing'] } }, { $set: { status: 'failed', processing: null, result: { endedAt, failureReason }, updatedAt: endedAt } });
+}
+
 // Marks a claimed task as failed and stores the execution error.
 export async function failCallTask(
   callTasks: Collection<CallTaskDocument>,

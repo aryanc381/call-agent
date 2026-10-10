@@ -30,7 +30,7 @@ export function createApp({
 
   app.use(express.json());
   app.use(express.urlencoded({ extended: false }));
-  app.use('/webhooks/vobiz', createVobizWebhookRouter(publicBaseUrl));
+  app.use('/webhooks/vobiz', createVobizWebhookRouter(publicBaseUrl, callTasks));
 
   /**
    usage: confirms that the HTTP process is running.
@@ -38,6 +38,7 @@ export function createApp({
    res.body: { status }
    */
   app.get('/health', (_request, response) => {
+    console.log('[health] backend liveness check');
     response.status(200).json({ status: 'ok' });
   });
 
@@ -47,7 +48,9 @@ export function createApp({
    res.body: { status }
    */
   app.get('/ready', async (_request, response) => {
-    if (await isReady()) {
+    const ready = await isReady();
+    console.log(`[health] backend readiness=${ready}`);
+    if (ready) {
       response.status(200).json({ status: 'ready' });
       return;
     }

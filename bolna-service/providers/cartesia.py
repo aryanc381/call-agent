@@ -1,8 +1,11 @@
 import base64
+import logging
 
 import httpx
 
 from config import settings
+
+logger = logging.getLogger("call-agent.media")
 
 
 async def synthesize(text: str) -> tuple[bytes, str]:
@@ -11,7 +14,7 @@ async def synthesize(text: str) -> tuple[bytes, str]:
         "model_id": settings.cartesia_model_id,
         "transcript": text,
         "voice": {"mode": "id", "id": settings.cartesia_voice_id},
-        "output_format": {"container": "wav", "encoding": "pcm_s16le", "sample_rate": 16000},
+        "output_format": {"container": "wav", "encoding": "pcm_s16le", "sample_rate": 8000},
     }
     headers = {
         "X-API-Key": settings.cartesia_api_key,
@@ -20,6 +23,9 @@ async def synthesize(text: str) -> tuple[bytes, str]:
     }
     async with httpx.AsyncClient(timeout=60) as client:
         response = await client.post("https://api.cartesia.ai/tts/bytes", headers=headers, json=body)
+        logger.info("provider=cartesia stage=tts status=%s", response.status_code)
+        if response.is_error:
+            logger.error("provider=cartesia stage=tts error=%s", response.text[:500])
         response.raise_for_status()
     return response.content, "audio/wav"
 

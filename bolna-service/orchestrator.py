@@ -12,6 +12,11 @@ logger = logging.getLogger("call-agent.media")
 
 def _prompt(request: SessionRequest, transcript: str) -> str:
     """Serializes task context and caller turn as data for the LLM."""
+    turn_instruction = (
+        "Start the call with greeting, then ask task_question exactly once."
+        if request.isFirstCall
+        else "The task_question was already asked. Never greet again and never repeat it, even when the caller transcript is unclear. Respond only to the latest caller transcript using the conversation history; ask a short clarification about that transcript when needed."
+    )
     return json.dumps(
         {
             "agent_style": request.personality,
@@ -22,10 +27,11 @@ def _prompt(request: SessionRequest, transcript: str) -> str:
                 "closeness": request.contact.closeness,
             },
             "situation": request.context,
-            "question": request.question,
+            "task_question": request.question if request.isFirstCall else None,
             "completion_criteria": request.completionCriteria,
             "greeting": request.greeting,
             "is_first_call": request.isFirstCall,
+            "turn_instruction": turn_instruction,
             "conversation_history": [
                 {"role": message.role, "content": message.content}
                 for message in request.conversationHistory

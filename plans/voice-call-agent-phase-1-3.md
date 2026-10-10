@@ -275,6 +275,8 @@ flowchart TD
 - Choose readable, direct code over clever or generic code. Any added complexity needs a present requirement and a short justification in the PR.
 - Delete dead code and avoid compatibility shims unless an active caller requires them.
 - Do not create automated test files. Validate changes with formatting, linting, type checks, builds, and documented manual smoke paths instead.
+- Put a one-line comment immediately above every function that states what it does.
+- Put these three comments immediately above every route: `usage: <purpose>`, `req.body: <comma-separated keys or none>`, and `res.body: <response shape>`.
 
 ## Delivery phases
 

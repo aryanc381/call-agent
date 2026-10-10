@@ -37,20 +37,37 @@ def _prompt(request: SessionRequest, transcript: str) -> str:
 
 
 def _decision(raw: str) -> tuple[str, bool]:
-    """Accepts only a valid answer and boolean completion decision."""
-    try:
-        result = json.loads(raw)
-        if (
-            not isinstance(result, dict)
-            or not isinstance(result.get("answer"), str)
-            or not result["answer"].strip()
-            or not isinstance(result.get("intentComplete"), bool)
-        ):
-            raise ValueError("invalid decision shape")
-        return result["answer"].strip(), result["intentComplete"]
-    except (json.JSONDecodeError, ValueError, TypeError):
-        logger.warning("stage=llm invalid_decision; using safe clarification")
-        return "Sorry, I didn't catch that. Could you say that again?", False
+    """Keeps usable model replies while requiring explicit JSON to finish a call."""
+    clean = raw.strip()
+    candidates = [clean]
+    if clean.startswith("```") and clean.endswith("```"):
+        candidates.append(clean.split("\n", 1)[-1].rsplit("```", 1)[0].strip())
+    object_start = clean.find("{")
+    object_end = clean.rfind("}")
+    if object_start >= 0 and object_end > object_start:
+        candidates.append(clean[object_start : object_end + 1])
+
+    for candidate in candidates:
+        try:
+            result = json.loads(candidate)
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(result, dict) or not isinstance(result.get("answer"), str):
+            continue
+        answer = result["answer"].strip()
+        if answer:
+            intent_complete = result.get("intentComplete")
+            if not isinstance(intent_complete, bool):
+                logger.warning("stage=llm missing_completion_flag; continuing_call")
+                intent_complete = False
+            return answer, intent_complete
+
+    if clean and not (clean.startswith("{") or clean.startswith("```")):
+        logger.warning("stage=llm non_json_reply; continuing_call")
+        return clean, False
+
+    logger.warning("stage=llm unusable_reply; using safe clarification")
+    return "Sorry, I didn't catch that. Could you say that again?", False
 
 
 async def run_session(request: SessionRequest) -> SessionResponse:

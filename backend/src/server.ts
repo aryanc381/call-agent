@@ -1,6 +1,10 @@
 import { createApp } from './app.js';
 import { createApiKeyAuth } from './auth.js';
 import { env } from './env.js';
+import {
+  ensureContactIndexes,
+  getContactsCollection,
+} from './models/contact.model.js';
 import { createMongoClient } from './platform/mongo.js';
 import { createCallTaskQueue } from './platform/queue.js';
 import { createRedisClient } from './platform/redis.js';
@@ -9,14 +13,31 @@ import { isReady } from './platform/readiness.js';
 const mongo = createMongoClient(env.mongodbUri);
 const redis = createRedisClient(env.redisUrl);
 const callTaskQueue = createCallTaskQueue(redis);
+const contacts = getContactsCollection(mongo.db());
 const app = createApp({
   apiKeyAuth: createApiKeyAuth(env.personalApiKey),
+  contacts,
   isReady: () => isReady(mongo, redis),
 });
+let server: ReturnType<typeof app.listen> | undefined;
 
-const server = app.listen(env.port, () => {
-  console.log(`Call agent backend listening on port ${env.port}`);
-});
+// Connects MongoDB and creates required indexes before accepting HTTP requests.
+async function start() {
+  await mongo.connect();
+  await ensureContactIndexes(contacts);
+
+  server = app.listen(env.port, () => {
+    console.log(`Call agent backend listening on port ${env.port}`);
+  });
+}
+
+// Stops startup when a required dependency cannot be initialized.
+function failStart(error: unknown) {
+  console.error('Could not start backend:', error);
+  process.exit(1);
+}
+
+void start().catch(failStart);
 
 // Closes application resources before the process exits.
 async function shutdown(signal: NodeJS.Signals) {
@@ -24,7 +45,7 @@ async function shutdown(signal: NodeJS.Signals) {
   await callTaskQueue.close().catch(() => undefined);
   await redis.quit().catch(() => redis.disconnect());
   await mongo.close();
-  server.close(() => process.exit(0));
+  server?.close(() => process.exit(0));
 }
 
 // Starts graceful shutdown when the process receives a termination signal.

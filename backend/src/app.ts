@@ -1,14 +1,21 @@
 import express from 'express';
+import type { Collection } from 'mongodb';
 import type { RequestHandler } from 'express';
+
+import { createContactsRouter } from './routes/contacts.route.js';
+import type { ContactDocument } from './types/contact.js';
 
 type AppDependencies = {
   apiKeyAuth: RequestHandler;
+  contacts: Collection<ContactDocument>;
   isReady: () => Promise<boolean>;
 };
 
 // Creates the HTTP application with public health routes and protected application routes.
-export function createApp({ apiKeyAuth, isReady }: AppDependencies) {
+export function createApp({ apiKeyAuth, contacts, isReady }: AppDependencies) {
   const app = express();
+
+  app.use(express.json());
 
   /**
    usage: confirms that the HTTP process is running.
@@ -33,7 +40,7 @@ export function createApp({ apiKeyAuth, isReady }: AppDependencies) {
     response.status(503).json({ status: 'unavailable' });
   });
 
-  app.use(apiKeyAuth);
+  app.use('/contacts', apiKeyAuth, createContactsRouter(contacts));
 
   return app;
 }

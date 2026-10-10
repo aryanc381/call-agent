@@ -286,6 +286,8 @@ Outcome: MongoDB models, personal API, Redis/BullMQ queue, atomic task claims, l
 
 Prerequisites: MongoDB and Redis configuration.
 
+Redis must use the `noeviction` max-memory policy because BullMQ cannot safely run when queued jobs may be evicted.
+
 Verification: formatting, linting, type checks, builds, and manual smoke paths cover contact/task creation, validation, and duplicate idempotency behavior.
 
 #### Dependency-ordered implementation parts

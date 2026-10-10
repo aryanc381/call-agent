@@ -4,20 +4,26 @@ import {
   ensureContactIndexes,
   getContactsCollection,
 } from './models/contact.model.js';
+import {
+  ensureCallTaskIndexes,
+  getCallTasksCollection,
+} from './models/call-task.model.js';
 import { createMongoClient } from './platform/mongo.js';
 import { createCallTaskQueue } from './platform/queue.js';
 import { createRedisClient } from './platform/redis.js';
 import { isReady } from './platform/readiness.js';
-import { createContactHandlers } from './services/contact.service.js';
 import { env } from './utils/env.js';
 
 const mongo = createMongoClient(env.mongodbUri);
 const redis = createRedisClient(env.redisUrl);
 const callTaskQueue = createCallTaskQueue(redis);
 const contacts = getContactsCollection(mongo.db());
+const callTasks = getCallTasksCollection(mongo.db());
 const app = createApp({
   apiKeyAuth: createApiKeyAuth(env.personalApiKey),
-  contacts: createContactHandlers(contacts),
+  contacts,
+  callTasks,
+  queue: callTaskQueue,
   isReady: () => isReady(mongo, redis),
 });
 let server: ReturnType<typeof app.listen> | undefined;
@@ -26,6 +32,7 @@ let server: ReturnType<typeof app.listen> | undefined;
 async function start() {
   await mongo.connect();
   await ensureContactIndexes(contacts);
+  await ensureCallTaskIndexes(callTasks);
 
   server = app.listen(env.port, () => {
     console.log(`Call agent backend listening on port ${env.port}`);

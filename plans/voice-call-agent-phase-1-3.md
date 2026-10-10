@@ -285,7 +285,11 @@ flowchart TD
 - Put a multiline `/** ... */` comment immediately above every route with these three unprefixed lines: `usage: <purpose>`, `req.body: <comma-separated keys or none>`, and `res.body: <response shape>`.
 - Place each feature's route files inside a named subfolder under `routes/`; keep only shared route mounts such as `root.ts` directly in `routes/`.
 - Keep validated environment access in `utils/env.ts` and authentication middleware in `middleware/auth.middleware.ts`; do not scatter environment reads or auth logic through route handlers.
-- Route modules must contain only router declarations and bindings to imported service handlers. Do not put controller logic, validation, duplicate handling, database calls, or inline request-handler functions inside `routes/`.
+- Use the traditional route-to-service flow for this project: route handlers call service functions directly. Do not introduce handler maps or Express-aware service factories for Phase 1.
+
+### Learning note
+
+We are intentionally using the traditional route-to-service pattern because the current priority is learning the voice-agent system, not exploring routing abstractions. We can build a smaller project later to learn handler maps, callback registration, and other route composition patterns without adding that indirection here.
 
 ## Delivery phases
 

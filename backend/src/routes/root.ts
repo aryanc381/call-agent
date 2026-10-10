@@ -1,18 +1,26 @@
 import { Router } from 'express';
 import type { RequestHandler } from 'express';
+import type { Collection } from 'mongodb';
+import type { Queue } from 'bullmq';
 
+import { createCallTasksRouter } from './call-tasks/call-tasks.route.js';
 import { createContactsRouter } from './contacts/contacts.route.js';
-import type { ContactRouteHandlers } from '../services/contact.service.js';
+import type { ContactDocument } from '../types/contact.js';
+import type { CallTaskDocument, CallTaskJob } from '../types/call-task.js';
 
 type RootRouterDependencies = {
   apiKeyAuth: RequestHandler;
-  contacts: ContactRouteHandlers;
+  contacts: Collection<ContactDocument>;
+  callTasks: Collection<CallTaskDocument>;
+  queue: Queue<CallTaskJob>;
 };
 
 // Creates the versioned API router that mounts application routes.
 export function createRootRouter({
   apiKeyAuth,
   contacts,
+  callTasks,
+  queue,
 }: RootRouterDependencies) {
   const router = Router();
 
@@ -22,6 +30,17 @@ export function createRootRouter({
    res.body: varies by contact route
    */
   router.use('/contacts', apiKeyAuth, createContactsRouter(contacts));
+
+  /**
+   usage: mounts protected call-task creation and status routes.
+   req.body: varies by call-task route
+   res.body: varies by call-task route
+   */
+  router.use(
+    '/call-tasks',
+    apiKeyAuth,
+    createCallTasksRouter({ contacts, callTasks, queue }),
+  );
 
   return router;
 }

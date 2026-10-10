@@ -19,7 +19,7 @@ async def health() -> dict[str, str]:
 @app.post("/v1/sessions", response_model=SessionResponse)
 async def create_session(request: SessionRequest) -> SessionResponse:
     """/** usage: runs a greeting or audio turn through STT, LLM, and TTS. req.body: {audioBase64, audioContentType, contact, question, context, personality, greeting, isFirstCall, conversationHistory}. res.body: {sessionId, transcript, answer, audioBase64, audioContentType} */"""
-    logger.info("session request received audio_bytes=%s content_type=%s", len(request.audioBase64), request.audioContentType)
+    logger.info("session request received audio_bytes=%s content_type=%s", len(request.audioBase64 or ""), request.audioContentType)
     try:
         result = await run_session(request)
         logger.info("session completed session_id=%s transcript_chars=%s answer_chars=%s audio_chars=%s", result.sessionId, len(result.transcript), len(result.answer), len(result.audioBase64))

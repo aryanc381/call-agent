@@ -34,55 +34,100 @@ function handleSocket(client: WebSocket, taskId: string, callTasks: Collection<C
   let silenceTimer: NodeJS.Timeout | undefined;
   let playing = false;
   let processing = false;
+  let hasCallerSpeech = false;
+  let streamEnded = false;
+  let finalized = false;
   const history = conversations.get(taskId) ?? [];
   conversations.set(taskId, history);
+  const scheduleTurn = () => {
+    if (silenceTimer) clearTimeout(silenceTimer);
+    if (streamEnded || finalized || !hasCallerSpeech || !frames.length) return;
+    silenceTimer = setTimeout(() => {
+      silenceTimer = undefined;
+      if (streamEnded || finalized) return;
+      if (processing) {
+        scheduleTurn();
+        return;
+      }
+      const turn = frames;
+      frames = [];
+      hasCallerSpeech = false;
+      processing = true;
+      console.log(`[vobiz] turn detected task=${taskId} frames=${turn.length}`);
+      void finishTurn(client, taskId, streamId, turn, callTasks, contacts, history, false, () => { playing = true; })
+        .finally(() => {
+          processing = false;
+          if (streamEnded) void endStream();
+          else if (hasCallerSpeech) scheduleTurn();
+        });
+    }, 1_200);
+  };
+  const endStream = async () => {
+    if (finalized) return;
+    if (silenceTimer) clearTimeout(silenceTimer);
+    silenceTimer = undefined;
+    if (processing) return;
+    if (hasCallerSpeech && frames.length) {
+      const turn = frames;
+      frames = [];
+      hasCallerSpeech = false;
+      processing = true;
+      await finishTurn(client, taskId, streamId, turn, callTasks, contacts, history, true, () => { playing = true; });
+      processing = false;
+    } else {
+      await persistConversation(callTasks, taskId, history);
+    }
+    finalized = true;
+    conversations.delete(taskId);
+  };
   client.on('message', async (raw) => {
     const event = JSON.parse(String(raw)) as { event: string; start?: { streamId?: string; streamSid?: string }; media?: { payload: string; track?: string }; name?: string };
     console.log(`[vobiz] event=${event.event} task=${taskId}`);
     if (event.event === 'start') {
       streamId = event.start?.streamId ?? event.start?.streamSid ?? '';
       await markCallTaskConnected(callTasks, taskId);
-      const request = await loadSessionRequest(taskId, callTasks, contacts);
-      const session = await runBolnaSession({ ...request, isFirstCall: true }, undefined, undefined, history) as SessionResponse;
-      history.push({ role: 'assistant', content: session.answer });
-      await playSessionAudio(client, streamId, session, () => { playing = true; });
+      processing = true;
+      try {
+        const request = await loadSessionRequest(taskId, callTasks, contacts);
+        const session = await runBolnaSession({ ...request, isFirstCall: true }, undefined, undefined, history) as SessionResponse;
+        history.push({ role: 'assistant', content: session.answer });
+        await playSessionAudio(client, streamId, session, () => { playing = true; });
+      } catch (error) {
+        console.error(`[vobiz] greeting failed task=${taskId} error=${error instanceof Error ? error.message : String(error)}`);
+        await failProviderCallTask(callTasks, taskId, error instanceof Error ? error.message : String(error));
+      } finally {
+        processing = false;
+        if (streamEnded) void endStream();
+        else if (hasCallerSpeech) scheduleTurn();
+      }
     }
     if (event.event === 'media' && event.media?.payload && (!event.media.track || event.media.track === 'inbound')) {
       const frame = Buffer.from(event.media.payload, 'base64');
       const speech = isSpeech(frame);
-      if (playing && !speech) return;
-      frames.push(frame);
       if (speech) {
         if (playing) {
           client.send(JSON.stringify({ event: 'clearAudio', streamId }));
           playing = false;
         }
+        hasCallerSpeech = true;
+        frames.push(frame);
         if (silenceTimer) clearTimeout(silenceTimer);
         silenceTimer = undefined;
-      } else if (!silenceTimer && frames.length > 3) {
-        silenceTimer = setTimeout(() => {
-          silenceTimer = undefined;
-          if (!processing) {
-            const turn = frames;
-            frames = [];
-            processing = true;
-            console.log(`[vobiz] turn detected task=${taskId} frames=${turn.length}`);
-            void finishTurn(client, taskId, streamId, turn, callTasks, contacts, history, false, () => { playing = true; }).finally(() => { processing = false; });
-          }
-        }, 1_200);
+      } else if (hasCallerSpeech && !playing) {
+        frames.push(frame);
+        if (!silenceTimer) scheduleTurn();
       }
     }
     if (event.event === 'playedStream' || event.event === 'clearedAudio') playing = false;
     if (event.event === 'stop') {
-      if (silenceTimer) clearTimeout(silenceTimer);
-      if (frames.length && !processing) {
-        processing = true;
-        await finishTurn(client, taskId, streamId, frames, callTasks, contacts, history, true, () => { playing = true; });
-        processing = false;
-      }
+      streamEnded = true;
+      await endStream();
     }
   });
-  client.on('close', () => { if (silenceTimer) clearTimeout(silenceTimer); conversations.delete(taskId); });
+  client.on('close', () => {
+    streamEnded = true;
+    void endStream();
+  });
 }
 
 function isSpeech(frame: Buffer) {
@@ -105,13 +150,20 @@ async function loadSessionRequest(taskId: string, callTasks: Collection<CallTask
 
 async function playSessionAudio(client: WebSocket, streamId: string, session: SessionResponse, onAudioStart: () => void) {
   const audio = wavToMuLaw(Buffer.from(session.audioBase64, 'base64'));
+  if (client.readyState !== WebSocket.OPEN) return;
   onAudioStart();
   for (let offset = 0; offset < audio.length; offset += 160) {
+    if (client.readyState !== WebSocket.OPEN) return;
     const payload = audio.subarray(offset, offset + 160);
     client.send(JSON.stringify({ event: 'playAudio', streamSid: streamId, media: { contentType: 'audio/x-mulaw', sampleRate: 8000, payload: payload.toString('base64') } }));
     await new Promise((resolve) => setTimeout(resolve, 20));
   }
-  client.send(JSON.stringify({ event: 'checkpoint', streamId, name: `response-${Date.now()}` }));
+  if (client.readyState === WebSocket.OPEN) client.send(JSON.stringify({ event: 'checkpoint', streamId, name: `response-${Date.now()}` }));
+}
+
+async function persistConversation(callTasks: Collection<CallTaskDocument>, taskId: string, history: ConversationMessage[]) {
+  const transcript = history.map((message) => ({ speaker: message.role === 'user' ? 'contact' as const : 'agent' as const, text: message.content, startedAtMs: 0, endedAtMs: 0 }));
+  await completeProviderCallTask(callTasks, taskId, { transcript, endedAt: new Date() });
 }
 
 async function finishTurn(client: WebSocket, taskId: string, streamId: string, frames: Buffer[], callTasks: Collection<CallTaskDocument>, contacts: Collection<ContactDocument>, history: ConversationMessage[], terminal: boolean, onAudioStart: () => void) {
@@ -122,7 +174,7 @@ async function finishTurn(client: WebSocket, taskId: string, streamId: string, f
     console.log(`[vobiz] turn response task=${taskId} transcriptChars=${session.transcript.length} answerChars=${session.answer.length}`);
     if (session.transcript.trim()) history.push({ role: 'user', content: session.transcript });
     history.push({ role: 'assistant', content: session.answer });
-    await playSessionAudio(client, streamId, session, onAudioStart);
+    if (!terminal) await playSessionAudio(client, streamId, session, onAudioStart);
     if (terminal) await completeProviderCallTask(callTasks, taskId, { confirmedAnswer: session.answer, transcript: history.map((message) => ({ speaker: message.role === 'user' ? 'contact' : 'agent', text: message.content, startedAtMs: 0, endedAtMs: 0 })), endedAt: new Date() });
   } catch (error) {
     console.error(`[vobiz] turn failed task=${taskId} error=${error instanceof Error ? error.message : String(error)}`);

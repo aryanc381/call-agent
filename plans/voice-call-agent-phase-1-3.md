@@ -364,6 +364,8 @@ Provider contracts reviewed before implementation: Bolna REST uses bearer authen
 Status: implementation is prepared on the Phase 2 branch; provider credentials and live calls remain intentionally untested until manual verification. This is an adapter seam, not a claim that a live phone call is complete.
 Local launch: `cd bolna-service && uvicorn main:app --host 0.0.0.0 --port 8000`. The Phase 2 service requires the Cloudflare and Cartesia variables; the Bolna API variables remain reserved for the Phase 3 transport boundary.
 
+Local launch: `cd bolna-service && uvicorn main:app --host 0.0.0.0 --port 8000`. The Phase 2 service requires the Cloudflare and Cartesia variables; the Bolna API variables remain reserved for the Phase 3 transport boundary.
+
 ### Phase 3 — Vobiz integration
 
 Outcome: TypeScript initiates Vobiz calls and exposes the documented callback/media seam; the remaining live WebSocket bridge, μ-law↔PCM codec conversion, callback signature verification, terminal callback persistence, and notifications are the next implementation slice before calling Phase 3 complete.

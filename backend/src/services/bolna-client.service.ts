@@ -6,8 +6,8 @@ type SessionInput = CallTaskRequest & { contact: { name: string; relation: strin
 
 // Sends one audio turn to the Python media plane's stable session contract.
 export async function runBolnaSession(request: SessionInput, audioBase64: string, audioContentType: string) {
-  if (!env.bolnaBaseUrl) throw new Error('Bolna base URL is not configured');
-  const response = await fetch(`${env.bolnaBaseUrl}/v1/sessions`, {
+  if (!env.mediaServiceBaseUrl) throw new Error('Media service base URL is not configured');
+  const response = await fetch(`${env.mediaServiceBaseUrl}/v1/sessions`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ audioBase64, audioContentType, ...request }),
   });

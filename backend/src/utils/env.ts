@@ -18,6 +18,7 @@ const schema = z.object({
   VOBIZ_FROM_NUMBER: z.string().optional(),
   PUBLIC_BASE_URL: z.union([z.literal(''), z.string().url()]).optional(),
   BOLNA_BASE_URL: z.union([z.literal(''), z.string().url()]).optional(),
+  MEDIA_SERVICE_BASE_URL: z.union([z.literal(''), z.string().url()]).optional(),
 });
 
 const parsed = schema.safeParse(process.env);
@@ -38,4 +39,5 @@ export const env = {
   vobizFromNumber: parsed.data.VOBIZ_FROM_NUMBER,
   publicBaseUrl: parsed.data.PUBLIC_BASE_URL,
   bolnaBaseUrl: parsed.data.BOLNA_BASE_URL,
+  mediaServiceBaseUrl: parsed.data.MEDIA_SERVICE_BASE_URL,
 };

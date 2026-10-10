@@ -286,6 +286,7 @@ flowchart TD
 - Place each feature's route files inside a named subfolder under `routes/`; keep only shared route mounts such as `root.ts` directly in `routes/`.
 - Keep validated environment access in `utils/env.ts` and authentication middleware in `middleware/auth.middleware.ts`; do not scatter environment reads or auth logic through route handlers.
 - Use the traditional route-to-service flow for this project: route handlers call service functions directly. Do not introduce handler maps or Express-aware service factories for Phase 1.
+- Before integrating any external provider, read its current official documentation and implement against the documented authentication, endpoint, request, response, webhook, limits, and failure behavior. Record the chosen provider contract in the relevant plan or code comments; do not guess or rely on stale examples.
 
 ### Learning note
 

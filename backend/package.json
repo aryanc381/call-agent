@@ -16,7 +16,12 @@
     "format:write": "prettier --write ."
   },
   "dependencies": {
-    "express": "^5.1.0"
+    "bullmq": "^6.3.12",
+    "dotenv": "^18.0.6",
+    "express": "^5.1.0",
+    "ioredis": "^6.0.0",
+    "mongodb": "^7.7.0",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@eslint/js": "^9.24.0",

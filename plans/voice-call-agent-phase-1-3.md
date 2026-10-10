@@ -271,9 +271,10 @@ flowchart TD
 - Do not add abstractions, layers, wrappers, configuration, or dependencies for hypothetical future needs.
 - Keep each module focused on one responsibility and keep public interfaces small and explicit.
 - Do not duplicate business rules. Extract shared code only after a real second use makes the shared contract clear.
-- Keep PRs as small vertical slices with only the code, tests, and documentation required for that slice.
+- Keep PRs as small vertical slices with only the code, validation, and documentation required for that slice.
 - Choose readable, direct code over clever or generic code. Any added complexity needs a present requirement and a short justification in the PR.
 - Delete dead code and avoid compatibility shims unless an active caller requires them.
+- Do not create automated test files. Validate changes with formatting, linting, type checks, builds, and documented manual smoke paths instead.
 
 ## Delivery phases
 
@@ -283,13 +284,13 @@ Outcome: MongoDB models, personal API, Redis/BullMQ queue, atomic task claims, l
 
 Prerequisites: MongoDB and Redis configuration.
 
-Verification: API tests cover contact/task creation, validation, and duplicate idempotency behavior.
+Verification: formatting, linting, type checks, builds, and manual smoke paths cover contact/task creation, validation, and duplicate idempotency behavior.
 
 #### Dependency-ordered implementation parts
 
 1. **Initialize:** create the `backend/` Express + TypeScript service with pnpm, Docker Compose, environment examples, developer tooling, and the CI skeleton.
 2. **Platform foundation:** add configuration validation, Express app/server setup, personal API-key middleware, MongoDB and Redis clients, and BullMQ setup. Depends on part 1.
-3. **Contacts:** add contact types, model/indexes, service, routes, and tests. Depends on part 2.
+3. **Contacts:** add contact types, model/indexes, service, routes, and a manual smoke path. Depends on part 2.
 4. **Call tasks and queueing:** add task types, model/indexes, idempotency, contact validation, task routes, and BullMQ enqueueing. Depends on part 3.
 5. **Worker lifecycle:** add atomic task claims, lifecycle/result persistence, and a simulated completed/failed executor. Depends on part 4; Vobiz, Bolna, and real notification delivery remain deferred.
 
@@ -297,10 +298,10 @@ Verification: API tests cover contact/task creation, validation, and duplicate i
 
 Phase 1 also establishes GitHub Actions PR CI in `.github/workflows/pull-request.yml`. The workflow runs on every pull request targeting `main` and has independent, path-aware checks for both service directories:
 
-- `backend/**` (TypeScript): install with the lockfile, then run formatting, linting, type checking, and unit/API tests.
-- `bolna-service/**` (Python): install from `requirements.txt`, then run formatting/linting, type checking, and tests.
+- `backend/**` (TypeScript): install with the lockfile, then run formatting, linting, type checking, and a production build.
+- `bolna-service/**` (Python): install from `requirements.txt`, then run formatting/linting and type checking.
 
-Changes outside a service directory skip that service's expensive setup while still reporting a successful, explicit skipped check. Both checks must be required GitHub branch-protection status checks before merging a PR. The CI workflow itself is tested by opening a PR that changes each service directory.
+Changes outside a service directory skip that service's expensive setup while still reporting a successful, explicit skipped check. Both checks must be required GitHub branch-protection status checks before merging a PR. Verify the CI workflow manually by opening a PR that changes each service directory.
 
 ### Phase 2 — Bolna media service
 

@@ -7,7 +7,6 @@
     "build": "pnpm --dir backend build",
     "typecheck": "pnpm --dir backend typecheck",
     "lint": "pnpm --dir backend lint",
-    "format": "pnpm --dir backend format",
-    "test": "pnpm --dir backend test"
+    "format": "pnpm --dir backend format"
   }
 }

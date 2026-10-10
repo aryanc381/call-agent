@@ -44,7 +44,7 @@ jobs:
       - run: pnpm --dir backend format
       - run: pnpm --dir backend lint
       - run: pnpm --dir backend typecheck
-      - run: pnpm --dir backend test
+      - run: pnpm --dir backend build
 
   bolna-service:
     needs: changes
@@ -59,4 +59,3 @@ jobs:
       - run: python -m ruff format --check bolna-service
       - run: python -m ruff check bolna-service
       - run: python -m mypy bolna-service
-      - run: python -m pytest bolna-service

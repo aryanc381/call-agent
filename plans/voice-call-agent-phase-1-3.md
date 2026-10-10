@@ -391,3 +391,85 @@ One sequential execution wave is required because each phase depends on the prec
 - Keep Python limited to the Bolna media plane. It must not own MongoDB, Redis, task lifecycle, Vobiz call creation, or notifications.
 - Vobiz owns PSTN connectivity; exact media-frame mapping and webhook fields must be verified against its documentation before Phase 3.
 - Store provider secrets in deployment secrets/environment variables only; never commit them.
+
+## Phase 2 ↔ Phase 3 system architecture
+
+Phase 2 owns one provider-neutral media turn. Phase 3 owns PSTN transport and task
+lifecycle. The boundary is deliberately small: Phase 3 supplies audio plus the
+session input, and Phase 2 returns transcript, answer, and generated audio. The
+Python service does not write MongoDB/Redis or know about Vobiz; the TypeScript
+backend remains the owner of task state.
+
+```mermaid
+sequenceDiagram
+  participant C as API client
+  participant Q as Redis/BullMQ
+  participant W as TS worker
+  participant V as Vobiz PSTN
+  participant H as TS webhook + WS bridge
+  participant B as Python /v1/sessions
+  participant S as Cloudflare Grok STT
+  participant L as Cloudflare Workers AI
+  participant T as Cartesia TTS
+  participant M as MongoDB
+
+  C->>W: create task (contact + question + context)
+  W->>Q: enqueue task
+  Q->>W: claim task with lease + claimToken
+  W->>V: createCall(to, answerUrl)
+  V->>H: POST /webhooks/vobiz/answer/:taskId
+  H-->>V: VobizXML bidirectional <Stream>
+  V->>H: WS start/media (base64 μ-law, 8 kHz)
+  H->>B: session input + decoded audio
+  B->>S: audio data URI
+  S-->>B: transcript
+  B->>L: bounded prompt (contact, question, context, personality)
+  L-->>B: concise answer
+  B->>T: answer text
+  T-->>B: WAV bytes
+  B-->>H: transcript + answer + base64 audio
+  H-->>V: playAudio (base64 provider audio)
+  V->>H: hangup/stream-status callback
+  H->>M: terminal state, transcript, answer, provider error
+  W->>M: completion/failure + notification state
+```
+
+Laconic code map:
+
+```text
+POST /v1/api/call-tasks
+  routes/call-tasks/call-tasks.route.ts
+    -> services/call-task.service.ts
+    -> queue/call-task.queue.ts
+    -> workers/call-task.worker.ts       # claim, call, persist
+
+Vobiz control plane
+  services/vobiz.service.ts              # POST Account/{id}/Call/
+  routes/webhooks/vobiz.route.ts         # answer, stream-status, hangup
+  realtime/vobiz-bolna.bridge.ts         # μ-law base64 decode/encode seam
+
+Phase 2 media plane
+  bolna-service/main.py                  # POST /v1/sessions
+  bolna-service/models.py                # TS ↔ Python request/response contract
+  bolna-service/orchestrator.py          # STT -> LLM -> TTS, one turn
+  providers/cloudflare.py                # Grok STT + Workers AI
+  providers/cartesia.py                  # WAV synthesis
+  services/bolna-client.service.ts       # TypeScript HTTP boundary
+```
+
+Data ownership and failure boundaries:
+
+- Vobiz speaks PSTN and provider WebSocket events; only the webhook/bridge layer
+  knows Vobiz field names and μ-law framing.
+- The bridge converts provider audio to the Phase 2 `audioBase64` contract and
+  converts returned audio back to Vobiz `playAudio`; it does not make prompt or
+  task decisions.
+- The Python orchestrator performs exactly `audio → transcript → answer → WAV`.
+  Provider failures become a failed media request; TypeScript records the task
+  failure and private provider error.
+- MongoDB is the source of truth for task status and results. Redis is only the
+  delivery/claim mechanism, so duplicate API requests or worker races cannot
+  create a second call.
+- `bolna-service` currently exposes the Phase 2 request boundary for local audio;
+  Phase 3 replaces that audio source with the Vobiz stream while preserving the
+  same session model and prompt construction.

@@ -6,6 +6,7 @@ import type { Queue } from 'bullmq';
 import { createRootRouter } from './routes/root.js';
 import type { ContactDocument } from './types/contact.js';
 import type { CallTaskDocument, CallTaskJob } from './types/call-task.js';
+import { createVobizWebhookRouter } from './routes/webhooks/vobiz.route.js';
 
 type AppDependencies = {
   apiKeyAuth: RequestHandler;
@@ -13,6 +14,7 @@ type AppDependencies = {
   callTasks: Collection<CallTaskDocument>;
   queue: Queue<CallTaskJob>;
   isReady: () => Promise<boolean>;
+  publicBaseUrl?: string;
 };
 
 // Creates the HTTP application with public health routes and protected application routes.
@@ -22,10 +24,13 @@ export function createApp({
   callTasks,
   queue,
   isReady,
+  publicBaseUrl,
 }: AppDependencies) {
   const app = express();
 
   app.use(express.json());
+  app.use(express.urlencoded({ extended: false }));
+  app.use('/webhooks/vobiz', createVobizWebhookRouter(publicBaseUrl));
 
   /**
    usage: confirms that the HTTP process is running.

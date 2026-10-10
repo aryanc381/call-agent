@@ -14,4 +14,5 @@ export async function ensureCallTaskIndexes(
   await callTasks.createIndex({ idempotencyKey: 1 }, { unique: true });
   await callTasks.createIndex({ status: 1, createdAt: 1 });
   await callTasks.createIndex({ contactId: 1 });
+  await callTasks.createIndex({ 'provider.vobizCallId': 1 }, { unique: true, sparse: true });
 }

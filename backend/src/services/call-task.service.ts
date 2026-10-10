@@ -38,6 +38,7 @@ export async function createCallTask(
     },
     status: 'queued',
     processing: null,
+    provider: null,
     result: null,
     createdAt: now,
     updatedAt: now,
@@ -134,6 +135,19 @@ export async function completeCallTask(
   return result.modifiedCount === 1;
 }
 
+// Stores the provider identifier after an outbound call is accepted.
+export async function markCallTaskDialing(
+  callTasks: Collection<CallTaskDocument>,
+  taskId: string,
+  claimToken: string,
+  vobizCallId: string,
+) {
+  return callTasks.updateOne(
+    { _id: new ObjectId(taskId), status: 'processing', 'processing.claimToken': claimToken },
+    { $set: { status: 'dialing', provider: { vobizCallId, startedAt: new Date() }, updatedAt: new Date() } },
+  );
+}
+
 // Marks a claimed task as failed and stores the execution error.
 export async function failCallTask(
   callTasks: Collection<CallTaskDocument>,
@@ -185,6 +199,7 @@ function toCallTask(document: CallTaskDocument): CallTask {
     request: document.request,
     status: document.status,
     processing: document.processing,
+    provider: document.provider ?? null,
     result: document.result,
     createdAt: document.createdAt,
     updatedAt: document.updatedAt,

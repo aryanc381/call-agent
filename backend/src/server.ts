@@ -26,6 +26,7 @@ const app = createApp({
   callTasks,
   queue: callTaskQueue,
   isReady: () => isReady(mongo, redis),
+  publicBaseUrl: env.publicBaseUrl,
 });
 let server: ReturnType<typeof app.listen> | undefined;
 let callTaskWorker: ReturnType<typeof createCallTaskWorker> | undefined;
@@ -36,7 +37,8 @@ async function start() {
   await connectRedis();
   await ensureContactIndexes(contacts);
   await ensureCallTaskIndexes(callTasks);
-  callTaskWorker = createCallTaskWorker(callTasks, redis);
+  if (!env.publicBaseUrl) throw new Error('PUBLIC_BASE_URL is required to start call workers');
+  callTaskWorker = createCallTaskWorker(callTasks, redis, contacts, env.publicBaseUrl);
 
   server = app.listen(env.port, () => {
     console.log(`Call agent backend listening on port ${env.port}`);

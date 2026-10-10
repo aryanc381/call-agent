@@ -1,7 +1,10 @@
 import { Router } from 'express';
+import type { Collection } from 'mongodb';
+import type { CallTaskDocument } from '../../types/call-task.js';
+import { failProviderCallTask } from '../../services/call-task.service.js';
 
 // Creates documented Vobiz answer, stream-status, and hangup callback responses.
-export function createVobizWebhookRouter(publicBaseUrl?: string) {
+export function createVobizWebhookRouter(publicBaseUrl: string | undefined, callTasks: Collection<CallTaskDocument>) {
   const router = Router();
 
   /**
@@ -25,13 +28,19 @@ export function createVobizWebhookRouter(publicBaseUrl?: string) {
    req.body: provider form fields
    res.body: none
    */
-  router.post('/stream-status/:taskId', (_request, response) => response.sendStatus(204));
+  router.post('/stream-status/:taskId', async (request, response) => {
+    if (request.body?.StreamStatus === 'failed') await failProviderCallTask(callTasks, request.params.taskId, 'Vobiz media stream failed');
+    response.sendStatus(204);
+  });
 
   /**
    usage: accepts the terminal Vobiz callback.
    req.body: provider form fields
    res.body: none
    */
-  router.post('/hangup/:taskId', (_request, response) => response.sendStatus(204));
+  router.post('/hangup/:taskId', async (request, response) => {
+    if (request.body?.HangupCause && request.body.HangupCause !== 'normal_clearing') await failProviderCallTask(callTasks, request.params.taskId, String(request.body.HangupCause));
+    response.sendStatus(204);
+  });
   return router;
 }

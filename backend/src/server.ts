@@ -14,6 +14,7 @@ import { createRedisClient } from './platform/redis.js';
 import { isReady } from './platform/readiness.js';
 import { env } from './utils/env.js';
 import { createCallTaskWorker } from './workers/call-task.worker.js';
+import { createVobizMediaServer } from './realtime/vobiz-media.server.js';
 
 const mongo = createMongoClient(env.mongodbUri);
 const redis = createRedisClient(env.redisUrl);
@@ -43,6 +44,7 @@ async function start() {
   server = app.listen(env.port, () => {
     console.log(`Call agent backend listening on port ${env.port}`);
   });
+  createVobizMediaServer(server, { callTasks, contacts });
 }
 
 // Waits for Redis to finish connecting before accepting task requests.

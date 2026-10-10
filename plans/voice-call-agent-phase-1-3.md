@@ -309,7 +309,7 @@ Verification: formatting, linting, type checks, builds, and manual smoke paths c
 2. **Platform foundation:** add configuration validation, Express app/server setup, personal API-key middleware, MongoDB and Redis clients, and BullMQ setup. Depends on part 1.
 3. **Contacts:** add contact types, model/indexes, service, routes, and a manual smoke path. Depends on part 2.
 4. **Call tasks and queueing:** add task types, model/indexes, idempotency, contact validation, task routes, and BullMQ enqueueing. Depends on part 3.
-5. **Worker lifecycle:** add atomic task claims, lifecycle/result persistence, and a simulated completed/failed executor. The manual failure smoke path uses the question marker `__simulate_failure__`; Vobiz, Bolna, and real notification delivery remain deferred. Depends on part 4.
+5. **Worker lifecycle:** add atomic task claims, lifecycle/result persistence, and a simulated completed/failed executor. The manual failure smoke path uses the question marker `__simulate_failure__`; Vobiz, Bolna, and real notification delivery remain deferred. The simulator is temporary and must be removed when real calling is introduced in the Vobiz/Bolna integration phases. Depends on part 4.
 
 #### Pull-request CI
 

@@ -1,14 +1,20 @@
 import express from 'express';
 import type { RequestHandler } from 'express';
 
+import { createRootRouter } from './routes/root.js';
+import type { ContactRouteHandlers } from './services/contact.service.js';
+
 type AppDependencies = {
   apiKeyAuth: RequestHandler;
+  contacts: ContactRouteHandlers;
   isReady: () => Promise<boolean>;
 };
 
 // Creates the HTTP application with public health routes and protected application routes.
-export function createApp({ apiKeyAuth, isReady }: AppDependencies) {
+export function createApp({ apiKeyAuth, contacts, isReady }: AppDependencies) {
   const app = express();
+
+  app.use(express.json());
 
   /**
    usage: confirms that the HTTP process is running.
@@ -33,7 +39,12 @@ export function createApp({ apiKeyAuth, isReady }: AppDependencies) {
     response.status(503).json({ status: 'unavailable' });
   });
 
-  app.use(apiKeyAuth);
+  /**
+   usage: mounts version one of the protected personal API.
+   req.body: varies by API route
+   res.body: varies by API route
+   */
+  app.use('/v1/api', createRootRouter({ apiKeyAuth, contacts }));
 
   return app;
 }

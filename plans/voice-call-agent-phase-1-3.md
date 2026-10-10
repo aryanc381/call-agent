@@ -125,10 +125,16 @@ call-agent/
 ├── backend/                                        #NEW — TypeScript control plane
 │   ├── src/
 │   │   ├── server.ts                                # HTTP + WebSocket server
-│   │   ├── config.ts                                # environment validation
+│   │   ├── utils/
+│   │   │   └── env.ts                               # environment validation
+│   │   ├── middleware/
+│   │   │   └── auth.middleware.ts                   # personal API-key auth
 │   │   ├── routes/
-│   │   │   ├── contacts.route.ts                    # contact API
-│   │   │   └── call-tasks.route.ts                  # task API
+│   │   │   ├── root.ts                              # versioned API route mount
+│   │   │   └── contacts/
+│   │   │       └── contacts.route.ts                # contact API
+│   │   │   └── call-tasks/
+│   │   │       └── call-tasks.route.ts               # task API
 │   │   ├── webhooks/
 │   │   │   └── vobiz.webhook.ts                     # Vobiz status callbacks
 │   │   ├── realtime/
@@ -174,11 +180,11 @@ call-agent/
 
 | Method | Path | Auth | Request | Success | Failure |
 |---|---|---|---|---|---|
-| POST | `/contacts` | Personal API key | `{ name, phoneNumber, relation: { relationship, closeness } }` | `201 { contact }` | `400`, `409` |
-| GET | `/contacts` | Personal API key | — | `200 { contacts }` | `401` |
-| GET | `/contacts/:contactId` | Personal API key | — | `200 { contact }` | `401`, `404` |
-| POST | `/call-tasks` | Personal API key | `{ contactId, relation, question, context, personality, isFirstCall }` and `Idempotency-Key` | `202 { task }` | `400`, `401`, `404`, `409` |
-| GET | `/call-tasks/:taskId` | Personal API key | — | `200 { task }` | `401`, `404` |
+| POST | `/v1/api/contacts` | Personal API key | `{ name, phoneNumber, relation: { relationship, closeness } }` | `201 { contact }` | `400`, `409` |
+| GET | `/v1/api/contacts` | Personal API key | — | `200 { contacts }` | `401` |
+| GET | `/v1/api/contacts/:contactId` | Personal API key | — | `200 { contact }` | `401`, `404` |
+| POST | `/v1/api/call-tasks` | Personal API key | `{ contactId, relation, question, context, personality, isFirstCall }` and `Idempotency-Key` | `202 { task }` | `400`, `401`, `404`, `409` |
+| GET | `/v1/api/call-tasks/:taskId` | Personal API key | — | `200 { task }` | `401`, `404` |
 | POST | `/webhooks/vobiz` | Vobiz signature | provider-defined signed status payload | `204` | `401`, `404` |
 
 The Vobiz adapter normalizes its provider payload into internal state; no other code depends on Vobiz field names.
@@ -205,7 +211,7 @@ Only the worker can initiate a call. API input is validated before persistence. 
   name + phoneNumber + relation + closeness
         │
         v
-POST /contacts ───────────────────────────────► contacts saved in MongoDB
+POST /v1/api/contacts ────────────────────────► contacts saved in MongoDB
 
 [Create call task]
   contactId + relation + question + context + personality + isFirstCall
@@ -277,6 +283,9 @@ flowchart TD
 - Do not create automated test files. Validate changes with formatting, linting, type checks, builds, and documented manual smoke paths instead.
 - Put a one-line comment immediately above every function that states what it does.
 - Put a multiline `/** ... */` comment immediately above every route with these three unprefixed lines: `usage: <purpose>`, `req.body: <comma-separated keys or none>`, and `res.body: <response shape>`.
+- Place each feature's route files inside a named subfolder under `routes/`; keep only shared route mounts such as `root.ts` directly in `routes/`.
+- Keep validated environment access in `utils/env.ts` and authentication middleware in `middleware/auth.middleware.ts`; do not scatter environment reads or auth logic through route handlers.
+- Route modules must contain only router declarations and bindings to imported service handlers. Do not put controller logic, validation, duplicate handling, database calls, or inline request-handler functions inside `routes/`.
 
 ## Delivery phases
 
@@ -285,6 +294,8 @@ flowchart TD
 Outcome: MongoDB models, personal API, Redis/BullMQ queue, atomic task claims, lifecycle persistence, and notification state.
 
 Prerequisites: MongoDB and Redis configuration.
+
+Redis must use the `noeviction` max-memory policy because BullMQ cannot safely run when queued jobs may be evicted.
 
 Verification: formatting, linting, type checks, builds, and manual smoke paths cover contact/task creation, validation, and duplicate idempotency behavior.
 

@@ -50,13 +50,19 @@ export function createCallTasksRouter({
     }
 
     try {
-      const task = await createCallTask(
+      const result = await createCallTask(
         callTasks,
         queue,
         input.data,
         idempotencyKey,
       );
-      response.status(202).json({ task });
+
+      response.status(result.created ? 202 : 200).json({
+        message: result.created
+          ? 'Call task queued'
+          : 'Call task already queued',
+        task: result.task,
+      });
     } catch {
       response.status(500).json({ error: 'Could not create call task' });
     }

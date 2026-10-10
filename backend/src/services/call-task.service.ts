@@ -20,7 +20,7 @@ export async function createCallTask(
   const existingTask = await callTasks.findOne({ idempotencyKey });
 
   if (existingTask) {
-    return toCallTask(existingTask);
+    return { task: toCallTask(existingTask), created: false };
   }
 
   const now = new Date();
@@ -53,7 +53,7 @@ export async function createCallTask(
       throw error;
     }
 
-    return toCallTask(duplicateTask);
+    return { task: toCallTask(duplicateTask), created: false };
   }
 
   await queue.add(
@@ -64,7 +64,7 @@ export async function createCallTask(
     },
   );
 
-  return toCallTask(document);
+  return { task: toCallTask(document), created: true };
 }
 
 // Returns one call task by identifier when it exists.

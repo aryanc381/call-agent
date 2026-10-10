@@ -183,7 +183,7 @@ call-agent/
 | POST | `/v1/api/contacts` | Personal API key | `{ name, phoneNumber, relation: { relationship, closeness } }` | `201 { contact }` | `400`, `409` |
 | GET | `/v1/api/contacts` | Personal API key | — | `200 { contacts }` | `401` |
 | GET | `/v1/api/contacts/:contactId` | Personal API key | — | `200 { contact }` | `401`, `404` |
-| POST | `/v1/api/call-tasks` | Personal API key | `{ contactId, relation, question, context, personality, isFirstCall }` and `Idempotency-Key` | `202 { task }` | `400`, `401`, `404`, `409` |
+| POST | `/v1/api/call-tasks` | Personal API key | `{ contactId, relation, question, context, personality, isFirstCall }` and `Idempotency-Key` | `202 { message, task }`; duplicate key returns `200 { message, task }` | `400`, `401`, `404`, `409` |
 | GET | `/v1/api/call-tasks/:taskId` | Personal API key | — | `200 { task }` | `401`, `404` |
 | POST | `/webhooks/vobiz` | Vobiz signature | provider-defined signed status payload | `204` | `401`, `404` |
 

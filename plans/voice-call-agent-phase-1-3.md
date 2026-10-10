@@ -368,7 +368,7 @@ Local launch: `cd bolna-service && uvicorn main:app --host 0.0.0.0 --port 8000`.
 
 ### Phase 3 — Vobiz integration
 
-Outcome: TypeScript initiates Vobiz calls, bridges documented media events through the Python session contract, converts μ-law/PCM payloads, and persists provider terminal state. Callback signature verification and result notifications remain before Phase 3 is complete.
+Outcome: TypeScript initiates Vobiz calls, detects turn boundaries on documented media events, bridges each turn through the Python session contract, converts μ-law/PCM payloads, streams `playAudio` chunks back, and persists provider terminal state. Callback signature verification and result notifications remain before Phase 3 is complete.
 
 Prerequisites: Phases 1–2 plus Vobiz outbound-call, media-stream, and webhook documentation/credentials.
 

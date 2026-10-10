@@ -10,16 +10,20 @@ type AppDependencies = {
 export function createApp({ apiKeyAuth, isReady }: AppDependencies) {
   const app = express();
 
-  // usage: confirms that the HTTP process is running.
-  // req.body: none
-  // res.body: { status }
+  /**
+   * usage: confirms that the HTTP process is running.
+   * req.body: none
+   * res.body: { status }
+   */
   app.get('/health', (_request, response) => {
     response.status(200).json({ status: 'ok' });
   });
 
-  // usage: confirms that MongoDB and Redis are reachable.
-  // req.body: none
-  // res.body: { status }
+  /**
+   * usage: confirms that MongoDB and Redis are reachable.
+   * req.body: none
+   * res.body: { status }
+   */
   app.get('/ready', async (_request, response) => {
     if (await isReady()) {
       response.status(200).json({ status: 'ready' });

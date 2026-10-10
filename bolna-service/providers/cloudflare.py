@@ -24,10 +24,14 @@ async def transcribe(audio: bytes, content_type: str) -> str:
         response.raise_for_status()
     payload = response.json()
     result = payload.get("result")
+    state = payload.get("state")
+    if isinstance(result, dict) and isinstance(result.get("result"), dict):
+        state = result.get("state", state)
+        result = result["result"]
     if not isinstance(result, dict) or not isinstance(result.get("text"), str):
         logger.error(
             "provider=cloudflare stage=stt invalid_response state=%s payload_keys=%s result_keys=%s",
-            payload.get("state"),
+            state,
             sorted(payload.keys()),
             sorted(result.keys()) if isinstance(result, dict) else [],
         )

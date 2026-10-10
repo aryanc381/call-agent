@@ -33,6 +33,7 @@ let callTaskWorker: ReturnType<typeof createCallTaskWorker> | undefined;
 // Connects MongoDB and creates required indexes before accepting HTTP requests.
 async function start() {
   await mongo.connect();
+  await connectRedis();
   await ensureContactIndexes(contacts);
   await ensureCallTaskIndexes(callTasks);
   callTaskWorker = createCallTaskWorker(callTasks, redis);
@@ -40,6 +41,21 @@ async function start() {
   server = app.listen(env.port, () => {
     console.log(`Call agent backend listening on port ${env.port}`);
   });
+}
+
+// Waits for Redis to finish connecting before accepting task requests.
+async function connectRedis() {
+  if (redis.status === 'wait') {
+    await redis.connect();
+    return;
+  }
+
+  if (redis.status !== 'ready') {
+    await new Promise<void>((resolve, reject) => {
+      redis.once('ready', resolve);
+      redis.once('error', reject);
+    });
+  }
 }
 
 // Stops startup when a required dependency cannot be initialized.

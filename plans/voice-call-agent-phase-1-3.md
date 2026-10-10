@@ -367,7 +367,7 @@ Local launch: `cd bolna-service && uvicorn main:app --host 0.0.0.0 --port 8000`.
 
 ### Phase 3 — Vobiz integration
 
-Outcome: TypeScript initiates Vobiz calls and exposes the documented callback/media seam; the remaining live WebSocket codec bridge and terminal callback persistence are the next implementation slice before calling Phase 3 complete.
+Outcome: TypeScript initiates Vobiz calls and exposes the documented callback/media seam; the remaining live WebSocket bridge, μ-law↔PCM codec conversion, callback signature verification, terminal callback persistence, and notifications are the next implementation slice before calling Phase 3 complete.
 
 Prerequisites: Phases 1–2 plus Vobiz outbound-call, media-stream, and webhook documentation/credentials.
 

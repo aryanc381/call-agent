@@ -6,7 +6,6 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     """Loads provider configuration from the repository environment file."""
 
-    bolna_api_key: str
     cloudflare_account_id: str
     cloudflare_api_token: str
     cloudflare_ai_model: str

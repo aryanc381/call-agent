@@ -183,7 +183,7 @@ call-agent/
 | POST | `/v1/api/contacts` | Personal API key | `{ name, phoneNumber, relation: { relationship, closeness } }` | `201 { contact }` | `400`, `409` |
 | GET | `/v1/api/contacts` | Personal API key | — | `200 { contacts }` | `401` |
 | GET | `/v1/api/contacts/:contactId` | Personal API key | — | `200 { contact }` | `401`, `404` |
-| POST | `/v1/api/call-tasks` | Personal API key | `{ contactId, relation, question, context, personality, isFirstCall }` and `Idempotency-Key` | `202 { task }` | `400`, `401`, `404`, `409` |
+| POST | `/v1/api/call-tasks` | Personal API key | `{ contactId, relation, question, context, personality, isFirstCall }` and `Idempotency-Key` | `202 { message, task }`; duplicate key returns `200 { message, task }` | `400`, `401`, `404`, `409` |
 | GET | `/v1/api/call-tasks/:taskId` | Personal API key | — | `200 { task }` | `401`, `404` |
 | POST | `/webhooks/vobiz` | Vobiz signature | provider-defined signed status payload | `204` | `401`, `404` |
 
@@ -285,7 +285,11 @@ flowchart TD
 - Put a multiline `/** ... */` comment immediately above every route with these three unprefixed lines: `usage: <purpose>`, `req.body: <comma-separated keys or none>`, and `res.body: <response shape>`.
 - Place each feature's route files inside a named subfolder under `routes/`; keep only shared route mounts such as `root.ts` directly in `routes/`.
 - Keep validated environment access in `utils/env.ts` and authentication middleware in `middleware/auth.middleware.ts`; do not scatter environment reads or auth logic through route handlers.
-- Route modules must contain only router declarations and bindings to imported service handlers. Do not put controller logic, validation, duplicate handling, database calls, or inline request-handler functions inside `routes/`.
+- Use the traditional route-to-service flow for this project: route handlers call service functions directly. Do not introduce handler maps or Express-aware service factories for Phase 1.
+
+### Learning note
+
+We are intentionally using the traditional route-to-service pattern because the current priority is learning the voice-agent system, not exploring routing abstractions. We can build a smaller project later to learn handler maps, callback registration, and other route composition patterns without adding that indirection here.
 
 ## Delivery phases
 
@@ -297,7 +301,7 @@ Prerequisites: MongoDB and Redis configuration.
 
 Redis must use the `noeviction` max-memory policy because BullMQ cannot safely run when queued jobs may be evicted.
 
-Verification: formatting, linting, type checks, builds, and manual smoke paths cover contact/task creation, validation, and duplicate idempotency behavior.
+Verification: formatting, linting, type checks, builds, and manual smoke paths cover contact/task creation, validation, duplicate idempotency behavior, and simulated worker success/failure.
 
 #### Dependency-ordered implementation parts
 
@@ -305,7 +309,7 @@ Verification: formatting, linting, type checks, builds, and manual smoke paths c
 2. **Platform foundation:** add configuration validation, Express app/server setup, personal API-key middleware, MongoDB and Redis clients, and BullMQ setup. Depends on part 1.
 3. **Contacts:** add contact types, model/indexes, service, routes, and a manual smoke path. Depends on part 2.
 4. **Call tasks and queueing:** add task types, model/indexes, idempotency, contact validation, task routes, and BullMQ enqueueing. Depends on part 3.
-5. **Worker lifecycle:** add atomic task claims, lifecycle/result persistence, and a simulated completed/failed executor. Depends on part 4; Vobiz, Bolna, and real notification delivery remain deferred.
+5. **Worker lifecycle:** add atomic task claims, lifecycle/result persistence, and a simulated completed/failed executor. The manual failure smoke path uses the question marker `__simulate_failure__`; Vobiz, Bolna, and real notification delivery remain deferred. The simulator is temporary and must be removed when real calling is introduced in the Vobiz/Bolna integration phases. Depends on part 4.
 
 #### Pull-request CI
 

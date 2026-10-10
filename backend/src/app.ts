@@ -1,17 +1,28 @@
 import express from 'express';
 import type { RequestHandler } from 'express';
+import type { Collection } from 'mongodb';
+import type { Queue } from 'bullmq';
 
 import { createRootRouter } from './routes/root.js';
-import type { ContactRouteHandlers } from './services/contact.service.js';
+import type { ContactDocument } from './types/contact.js';
+import type { CallTaskDocument, CallTaskJob } from './types/call-task.js';
 
 type AppDependencies = {
   apiKeyAuth: RequestHandler;
-  contacts: ContactRouteHandlers;
+  contacts: Collection<ContactDocument>;
+  callTasks: Collection<CallTaskDocument>;
+  queue: Queue<CallTaskJob>;
   isReady: () => Promise<boolean>;
 };
 
 // Creates the HTTP application with public health routes and protected application routes.
-export function createApp({ apiKeyAuth, contacts, isReady }: AppDependencies) {
+export function createApp({
+  apiKeyAuth,
+  contacts,
+  callTasks,
+  queue,
+  isReady,
+}: AppDependencies) {
   const app = express();
 
   app.use(express.json());
@@ -44,7 +55,10 @@ export function createApp({ apiKeyAuth, contacts, isReady }: AppDependencies) {
    req.body: varies by API route
    res.body: varies by API route
    */
-  app.use('/v1/api', createRootRouter({ apiKeyAuth, contacts }));
+  app.use(
+    '/v1/api',
+    createRootRouter({ apiKeyAuth, contacts, callTasks, queue }),
+  );
 
   return app;
 }

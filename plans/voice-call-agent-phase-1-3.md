@@ -296,12 +296,13 @@ Verification: formatting, linting, type checks, builds, and manual smoke paths c
 
 #### Pull-request CI
 
-Phase 1 also establishes GitHub Actions PR CI in `.github/workflows/pull-request.yml`. The workflow runs on every pull request targeting `main` and has independent, path-aware checks for both service directories:
+Phase 1 establishes a simple GitHub Actions PR CI workflow in `.github/workflows/pull-request.yml`. It runs on every pull request targeting `main` as one direct `backend` job:
 
-- `backend/**` (TypeScript): install with the lockfile, then run formatting, linting, type checking, and a production build.
-- `bolna-service/**` (Python): install from `requirements.txt`, then run formatting/linting and type checking.
+- `actions/checkout@v4`
+- `pnpm/action-setup@v4` and `actions/setup-node@v4`
+- install with the lockfile, then run formatting, linting, type checking, and a production build
 
-Changes outside a service directory skip that service's expensive setup while still reporting a successful, explicit skipped check. Both checks must be required GitHub branch-protection status checks before merging a PR. Verify the CI workflow manually by opening a PR that changes each service directory.
+The `backend` check must be a required GitHub branch-protection status check before merging a PR. Phase 2 adds the equally simple Python check once `bolna-service/requirements.txt` exists; do not add placeholder jobs or path-filtering logic before then. Verify the workflow manually by opening a backend-changing PR.
 
 ### Phase 2 — Bolna media service
 

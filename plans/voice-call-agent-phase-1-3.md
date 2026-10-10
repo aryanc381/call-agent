@@ -127,6 +127,7 @@ call-agent/
 │   │   ├── server.ts                                # HTTP + WebSocket server
 │   │   ├── config.ts                                # environment validation
 │   │   ├── routes/
+│   │   │   ├── root.ts                            # versioned API route mount
 │   │   │   ├── contacts.route.ts                    # contact API
 │   │   │   └── call-tasks.route.ts                  # task API
 │   │   ├── webhooks/
@@ -174,11 +175,11 @@ call-agent/
 
 | Method | Path | Auth | Request | Success | Failure |
 |---|---|---|---|---|---|
-| POST | `/contacts` | Personal API key | `{ name, phoneNumber, relation: { relationship, closeness } }` | `201 { contact }` | `400`, `409` |
-| GET | `/contacts` | Personal API key | — | `200 { contacts }` | `401` |
-| GET | `/contacts/:contactId` | Personal API key | — | `200 { contact }` | `401`, `404` |
-| POST | `/call-tasks` | Personal API key | `{ contactId, relation, question, context, personality, isFirstCall }` and `Idempotency-Key` | `202 { task }` | `400`, `401`, `404`, `409` |
-| GET | `/call-tasks/:taskId` | Personal API key | — | `200 { task }` | `401`, `404` |
+| POST | `/v1/api/contacts` | Personal API key | `{ name, phoneNumber, relation: { relationship, closeness } }` | `201 { contact }` | `400`, `409` |
+| GET | `/v1/api/contacts` | Personal API key | — | `200 { contacts }` | `401` |
+| GET | `/v1/api/contacts/:contactId` | Personal API key | — | `200 { contact }` | `401`, `404` |
+| POST | `/v1/api/call-tasks` | Personal API key | `{ contactId, relation, question, context, personality, isFirstCall }` and `Idempotency-Key` | `202 { task }` | `400`, `401`, `404`, `409` |
+| GET | `/v1/api/call-tasks/:taskId` | Personal API key | — | `200 { task }` | `401`, `404` |
 | POST | `/webhooks/vobiz` | Vobiz signature | provider-defined signed status payload | `204` | `401`, `404` |
 
 The Vobiz adapter normalizes its provider payload into internal state; no other code depends on Vobiz field names.
@@ -205,7 +206,7 @@ Only the worker can initiate a call. API input is validated before persistence. 
   name + phoneNumber + relation + closeness
         │
         v
-POST /contacts ───────────────────────────────► contacts saved in MongoDB
+POST /v1/api/contacts ────────────────────────► contacts saved in MongoDB
 
 [Create call task]
   contactId + relation + question + context + personality + isFirstCall

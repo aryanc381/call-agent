@@ -2,7 +2,7 @@ import express from 'express';
 import type { Collection } from 'mongodb';
 import type { RequestHandler } from 'express';
 
-import { createContactsRouter } from './routes/contacts.route.js';
+import { createRootRouter } from './routes/root.js';
 import type { ContactDocument } from './types/contact.js';
 
 type AppDependencies = {
@@ -40,7 +40,12 @@ export function createApp({ apiKeyAuth, contacts, isReady }: AppDependencies) {
     response.status(503).json({ status: 'unavailable' });
   });
 
-  app.use('/contacts', apiKeyAuth, createContactsRouter(contacts));
+  /**
+   usage: mounts version one of the protected personal API.
+   req.body: varies by API route
+   res.body: varies by API route
+   */
+  app.use('/v1/api', createRootRouter({ apiKeyAuth, contacts }));
 
   return app;
 }

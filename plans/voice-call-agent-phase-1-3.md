@@ -375,7 +375,7 @@ Prerequisites: Phases 1–2 plus Vobiz outbound-call, media-stream, and webhook 
 
 Provider contract: Vobiz outbound calls use `POST /api/v1/Account/{authId}/Call/` with `X-Auth-ID` and `X-Auth-Token`; answer callbacks return VobizXML `<Stream bidirectional="true">` and media frames are base64 μ-law WebSocket events. The adapter and bridge must follow the official examples ([Vobiz Python example](https://github.com/vobiz-ai/Vobiz-Python-Voice-API-Example), [Vobiz streaming integration](https://www.vobiz.ai/integrations/pipecat/)).
 
-Intent completion: every new task supplies `completionCriteria`. The LLM returns JSON `{ "answer": string, "intentComplete": boolean }`; TypeScript accepts completion only for a non-empty caller transcript, plays the final answer, waits for the matching Vobiz `playedStream` checkpoint, then uses the documented active-call hangup operation (`DELETE /api/v1/Account/{authId}/Call/{callUuid}`). A usable non-JSON reply is spoken with `intentComplete: false`; a JSON reply without a valid boolean also continues the call. Only an unusable JSON-shaped reply gets a clarification. The greeting cannot complete a task. The call UUID comes from the persisted Vobiz call record, never from the public media socket payload. See the [official Vobiz SDK hangup operation](https://github.com/vobiz-ai/Vobiz-Python-SDK).
+Intent completion: every new task supplies `completionCriteria`. The LLM returns JSON `{ "answer": string, "intentComplete": boolean }`; TypeScript accepts completion only for a non-empty caller transcript, plays the final answer, waits for the matching Vobiz `playedStream` checkpoint, then uses the documented active-call hangup operation (`DELETE /api/v1/Account/{authId}/Call/{callUuid}`). Missing/malformed LLM fields default to a clarification reply with `intentComplete: false`. The greeting cannot complete a task. The call UUID comes from the persisted Vobiz call record, never from the public media socket payload. See the [official Vobiz SDK hangup operation](https://github.com/vobiz-ai/Vobiz-Python-SDK).
 
 Verification: human E2E call results in either a completed task and accurate notification or a failed task and failure notification.
 
@@ -480,7 +480,7 @@ Data ownership and failure boundaries:
 - The Python orchestrator performs exactly `audio → transcript → answer → WAV`.
   Provider failures become a failed media request; TypeScript records the task
   failure and private provider error.
-- The Python orchestrator carries the completion decision beside the spoken answer. It requires an explicit boolean flag before ending a call, but speaks a usable non-JSON reply while continuing with `intentComplete=false`; only unusable JSON-shaped output becomes a safe clarification. The greeting and empty transcript cannot complete a task.
+- The Python orchestrator carries the completion decision beside the spoken answer. It parses only a JSON object with a non-empty answer and boolean flag; invalid output becomes a safe clarification with `intentComplete=false`. The greeting and empty transcript cannot complete a task.
 - TypeScript is the only layer that hangs up the call. It requires a non-empty caller transcript, waits for Vobiz's matching playback checkpoint, and uses the stored provider call UUID for the authenticated REST hangup. A caller-supplied media event cannot choose the call ID to terminate.
 - MongoDB is the source of truth for task status and results. Redis is only the
   delivery/claim mechanism, so duplicate API requests or worker races cannot

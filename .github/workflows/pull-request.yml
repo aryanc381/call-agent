@@ -24,3 +24,14 @@ jobs:
       - run: pnpm --dir backend lint
       - run: pnpm --dir backend typecheck
       - run: pnpm --dir backend build
+
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -r bolna-service/requirements.txt
+      - run: python -m compileall bolna-service

@@ -62,8 +62,7 @@ def _decision(raw: str) -> tuple[str, bool]:
                 intent_complete = False
             return answer, intent_complete
 
-    control_only = clean.lower().replace("_", "").replace(" ", "").startswith(("intent:", "intentcomplete:"))
-    if clean and not control_only and not (clean.startswith("{") or clean.startswith("```")):
+    if clean and not (clean.startswith("{") or clean.startswith("```")):
         logger.warning("stage=llm non_json_reply; continuing_call")
         return clean, False
 

@@ -139,6 +139,7 @@ function handleSocket(client: WebSocket, taskId: string, callTasks: Collection<C
       }
     }
     if (event.event === 'media' && !ending && event.media?.payload && (!event.media.track || event.media.track === 'inbound')) {
+      if (playing) return;
       const frame = Buffer.from(event.media.payload, 'base64');
       const speech = isSpeech(frame);
       if (!hasCallerSpeech && !playing && !speech) {
@@ -146,11 +147,6 @@ function handleSocket(client: WebSocket, taskId: string, callTasks: Collection<C
         if (leadInFrames.length > 10) leadInFrames.shift();
       }
       if (speech) {
-        if (playing) {
-          client.send(JSON.stringify({ event: 'clearAudio', streamId }));
-          playing = false;
-          leadInFrames = [];
-        }
         hasCallerSpeech = true;
         frames.push(...leadInFrames);
         leadInFrames = [];

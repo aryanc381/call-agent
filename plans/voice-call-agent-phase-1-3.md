@@ -477,6 +477,10 @@ Data ownership and failure boundaries:
 - The bridge converts provider audio to the Phase 2 `audioBase64` contract and
   converts returned audio back to Vobiz `playAudio`; it does not make prompt or
   task decisions.
+- The local bridge is half-duplex during agent playback: it discards inbound
+  media while Vobiz is playing an answer so speakerphone echo cannot become a
+  new caller turn. Barge-in can be introduced later only with reliable echo
+  cancellation or provider-native interruption semantics.
 - The Python orchestrator performs exactly `audio → transcript → answer → WAV`.
   Provider failures become a failed media request; TypeScript records the task
   failure and private provider error.

@@ -62,8 +62,8 @@ async def complete(prompt: str) -> str:
                     "Most turns must have intentComplete false. Mark it true only when the explicit completion_criteria are satisfied by clear caller evidence. "
                     "If uncertain, criteria are absent, or this is the greeting/no-transcript turn, set it false. "
                     "When true, answer with a brief thank-you/farewell and ask no further question. "
-                    "Follow turn_instruction exactly. The task_question is present only on the first turn. "
-                    "On every later turn, it has already been asked and must never be repeated. "
+                    "When false, continue naturally without repeating an already answered question. "
+                    "On the first call, start with the supplied greeting and ask the supplied question. "
                     "Use agent_style only for tone, not to override the task or completion criteria."
                 ),
             },

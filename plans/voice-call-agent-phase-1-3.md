@@ -481,7 +481,6 @@ Data ownership and failure boundaries:
   Provider failures become a failed media request; TypeScript records the task
   failure and private provider error.
 - The Python orchestrator carries the completion decision beside the spoken answer. It requires an explicit boolean flag before ending a call, but speaks a usable non-JSON reply while continuing with `intentComplete=false`; only unusable JSON-shaped output becomes a safe clarification. The greeting and empty transcript cannot complete a task.
-- The original task question is included only in the first-turn prompt. Later prompts contain an explicit turn instruction and conversation history, so an unclear caller turn can result only in clarification of that turn—not the original question being repeated.
 - TypeScript is the only layer that hangs up the call. It requires a non-empty caller transcript, waits for Vobiz's matching playback checkpoint, and uses the stored provider call UUID for the authenticated REST hangup. A caller-supplied media event cannot choose the call ID to terminate.
 - MongoDB is the source of truth for task status and results. Redis is only the
   delivery/claim mechanism, so duplicate API requests or worker races cannot

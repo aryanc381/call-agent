@@ -1,19 +1,18 @@
 import { ObjectId } from 'mongodb';
 import type { Collection } from 'mongodb';
 import type { Server } from 'node:http';
-import { WebSocketServer, type WebSocket } from 'ws';
+import { WebSocket, WebSocketServer } from 'ws';
 
 import { completeProviderCallTask, failProviderCallTask, markCallTaskConnected } from '../services/call-task.service.js';
 import { runBolnaSession } from '../services/bolna-client.service.js';
-import { hangupVobizCall } from '../services/vobiz.service.js';
 import type { CallTaskDocument, CallTaskRequest, ConversationMessage } from '../types/call-task.js';
 import type { ContactDocument } from '../types/contact.js';
 import { muLawToPcm, muLawToWav, wavToMuLaw } from './audio.js';
 
 type MediaDependencies = { callTasks: Collection<CallTaskDocument>; contacts: Collection<ContactDocument> };
-type SessionRequest = CallTaskRequest & { contact: { name: string; relation: string; relationDescription: string; closeness: string } };
-type LoadedSessionRequest = { request: SessionRequest; callId: string };
-type SessionResponse = { audioBase64: string; transcript: string; answer: string; intentComplete: boolean };
+type SessionRequest = CallTaskRequest & { contact: { name: string; context: string } };
+type LoadedSessionRequest = { request: SessionRequest };
+type SessionResponse = { audioBase64: string; transcript: string; answer: string };
 
 // Serves Vobiz media events and keeps one conversation history per active task.
 export function createVobizMediaServer(server: Server, { callTasks, contacts }: MediaDependencies) {
@@ -116,7 +115,7 @@ function handleSocket(client: WebSocket, taskId: string, callTasks: Collection<C
       return;
     }
     if (typeof event.event !== 'string') return;
-    console.log(`[vobiz] event=${event.event} task=${taskId}`);
+    if (event.event !== 'media') console.log(`[vobiz] event=${event.event} task=${taskId}`);
     if (event.event === 'start') {
       if (started) return;
       started = true;
@@ -125,9 +124,10 @@ function handleSocket(client: WebSocket, taskId: string, callTasks: Collection<C
       await markCallTaskConnected(callTasks, taskId);
       processing = true;
       try {
-        const session = await runBolnaSession({ ...loaded.request, isFirstCall: true }, undefined, undefined, history) as SessionResponse;
+        const session = await runBolnaSession(loaded.request, undefined, undefined, history) as SessionResponse;
         history.push({ role: 'assistant', content: session.answer });
         await playSessionAudio(client, streamId, session, () => { playing = true; });
+        console.log(`[conversation] agent task=${taskId}: ${session.answer}`);
       } catch (error) {
         console.error(`[vobiz] greeting failed task=${taskId} error=${error instanceof Error ? error.message : String(error)}`);
         await failProviderCallTask(callTasks, taskId, error instanceof Error ? error.message : String(error));
@@ -137,7 +137,7 @@ function handleSocket(client: WebSocket, taskId: string, callTasks: Collection<C
         else if (hasCallerSpeech) scheduleTurn();
       }
     }
-    if (event.event === 'media' && !ending && event.media?.payload && (!event.media.track || event.media.track === 'inbound')) {
+    if (event.event === 'media' && !ending && event.media?.payload && event.media.track !== 'outbound') {
       const frame = Buffer.from(event.media.payload, 'base64');
       const speech = isSpeech(frame);
       if (speech) {
@@ -156,7 +156,7 @@ function handleSocket(client: WebSocket, taskId: string, callTasks: Collection<C
     }
     if (event.event === 'playedStream') {
       playing = false;
-      if (checkpointWaiter?.name === event.name) checkpointWaiter.resolve();
+      if (checkpointWaiter?.name === event.name) checkpointWaiter?.resolve();
     }
     if (event.event === 'clearedAudio') {
       playing = false;
@@ -183,16 +183,12 @@ function isSpeech(frame: Buffer) {
 async function loadSessionRequest(taskId: string, callTasks: Collection<CallTaskDocument>, contacts: Collection<ContactDocument>): Promise<LoadedSessionRequest> {
   const task = await callTasks.findOne({ _id: new ObjectId(taskId) });
   if (!task) throw new Error('Call task not found');
-  const callId = task.provider?.vobizCallId;
-  if (!callId) throw new Error('Vobiz call identifier is missing');
   const contact = await contacts.findOne({ _id: task.contactId });
   if (!contact) throw new Error('Contact not found');
   return {
-    callId,
     request: {
       ...task.request,
-      greeting: task.request.greeting ?? `Hi, this is Aryan's calling assistant.`,
-      contact: { name: contact.name, relation: contact.relation.relationship, relationDescription: task.request.relation.description, closeness: contact.relation.closeness },
+      contact: { name: contact.name, context: task.request.context },
     },
   };
 }
@@ -233,27 +229,18 @@ async function finishTurn(client: WebSocket, taskId: string, streamId: string, f
   try {
     console.log(`[vobiz] turn processing task=${taskId} terminal=${terminal} frames=${frames.length}`);
     const loaded = await loadSessionRequest(taskId, callTasks, contacts);
-    const session = await runBolnaSession({ ...loaded.request, isFirstCall: false }, muLawToWav(frames).toString('base64'), 'audio/wav', history) as SessionResponse;
+    const session = await runBolnaSession(loaded.request, muLawToWav(frames).toString('base64'), 'audio/wav', history) as SessionResponse;
     console.log(`[vobiz] turn response task=${taskId} transcriptChars=${session.transcript.length} answerChars=${session.answer.length}`);
-    if (session.transcript.trim()) history.push({ role: 'user', content: session.transcript });
+    if (session.transcript.trim()) {
+      history.push({ role: 'user', content: session.transcript });
+      console.log(`[conversation] human task=${taskId}: ${session.transcript}`);
+    }
     history.push({ role: 'assistant', content: session.answer });
-    const intentComplete = session.intentComplete && Boolean(session.transcript.trim());
-    if (intentComplete && !terminal && markEnding()) {
-      shouldFailTask = true;
-      await playSessionAudio(client, streamId, session, onAudioStart, waitForPlayback);
-      await hangupVobizCall(loaded.callId);
-      await completeProviderCallTask(callTasks, taskId, {
-        confirmedAnswer: session.answer,
-        intentComplete: true,
-        transcript: history.map((message) => ({ speaker: message.role === 'user' ? 'contact' : 'agent', text: message.content, startedAtMs: 0, endedAtMs: 0 })),
-        endedAt: new Date(),
-      });
-    } else if (!terminal) {
+    if (!terminal) {
       await playSessionAudio(client, streamId, session, onAudioStart);
+      console.log(`[conversation] agent task=${taskId}: ${session.answer}`);
     }
     if (terminal) await completeProviderCallTask(callTasks, taskId, {
-      confirmedAnswer: session.answer,
-      intentComplete: session.intentComplete,
       transcript: history.map((message) => ({ speaker: message.role === 'user' ? 'contact' : 'agent', text: message.content, startedAtMs: 0, endedAtMs: 0 })),
       endedAt: new Date(),
     });

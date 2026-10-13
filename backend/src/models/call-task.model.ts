@@ -7,7 +7,7 @@ export function getCallTasksCollection(database: Db) {
   return database.collection<CallTaskDocument>('call_tasks');
 }
 
-// Creates the indexes required for task lookup, idempotency, and queue ordering.
+// Creates the indexes required for call lookup and duplicate-call prevention.
 export async function ensureCallTaskIndexes(
   callTasks: Collection<CallTaskDocument>,
 ) {

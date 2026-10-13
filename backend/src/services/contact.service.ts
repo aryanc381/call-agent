@@ -52,7 +52,6 @@ function toContact(document: ContactDocument): Contact {
     id: document._id.toHexString(),
     name: document.name,
     phoneNumber: document.phoneNumber,
-    relation: document.relation,
     createdAt: document.createdAt,
     updatedAt: document.updatedAt,
   };

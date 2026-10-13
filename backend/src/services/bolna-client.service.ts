@@ -1,8 +1,8 @@
 import type { CallTaskRequest, ConversationMessage } from '../types/call-task.js';
 import { env } from '../utils/env.js';
 
-type SessionResponse = { sessionId: string; transcript: string; answer: string; intentComplete: boolean; audioBase64: string; audioContentType: string };
-type SessionInput = CallTaskRequest & { contact: { name: string; relation: string; relationDescription: string; closeness: string } };
+type SessionResponse = { sessionId: string; transcript: string; answer: string; audioBase64: string; audioContentType: string };
+type SessionInput = CallTaskRequest & { contact: { name: string; context: string } };
 
 // Sends one audio turn to the Python media plane's stable session contract.
 export async function runBolnaSession(request: SessionInput, audioBase64: string | undefined, audioContentType: string | undefined, conversationHistory: ConversationMessage[]) {
@@ -30,7 +30,6 @@ function isSessionResponse(value: unknown): value is SessionResponse {
   return typeof session.sessionId === 'string'
     && typeof session.transcript === 'string'
     && typeof session.answer === 'string'
-    && typeof session.intentComplete === 'boolean'
     && typeof session.audioBase64 === 'string'
     && typeof session.audioContentType === 'string';
 }

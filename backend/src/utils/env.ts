@@ -12,6 +12,11 @@ const schema = z.object({
   MONGODB_URI: z.string().min(1),
   REDIS_URL: z.string().min(1),
   PERSONAL_API_KEY: z.string().min(1),
+  AGENT_PERSONALITY: z
+    .string()
+    .trim()
+    .min(1)
+    .default("You are Aryan's warm, concise calling assistant. Speak naturally and helpfully."),
   VOBIZ_AUTH_ID: z.string().optional(),
   VOBIZ_AUTH_TOKEN: z.string().optional(),
   VOBIZ_BASE_URL: z.union([z.literal(''), z.string().url()]).optional(),
@@ -33,6 +38,7 @@ export const env = {
   mongodbUri: parsed.data.MONGODB_URI,
   redisUrl: parsed.data.REDIS_URL,
   personalApiKey: parsed.data.PERSONAL_API_KEY,
+  agentPersonality: parsed.data.AGENT_PERSONALITY,
   vobizAuthId: parsed.data.VOBIZ_AUTH_ID,
   vobizAuthToken: parsed.data.VOBIZ_AUTH_TOKEN,
   vobizBaseUrl: parsed.data.VOBIZ_BASE_URL,

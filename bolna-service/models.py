@@ -5,9 +5,7 @@ from pydantic import BaseModel, Field
 
 class Contact(BaseModel):
     name: str = Field(min_length=1)
-    relation: str = Field(min_length=1)
-    relationDescription: str = Field(min_length=1)
-    closeness: str = Field(min_length=1)
+    context: str = Field(min_length=1)
 
 
 class ConversationMessage(BaseModel):
@@ -19,11 +17,7 @@ class SessionRequest(BaseModel):
     audioBase64: str | None = None
     audioContentType: str | None = None
     contact: Contact
-    question: str = Field(min_length=1)
-    context: str = Field(min_length=1)
     personality: str = Field(min_length=1)
-    greeting: str = Field(min_length=1)
-    isFirstCall: bool
     conversationHistory: list[ConversationMessage] = Field(default_factory=list)
 
 

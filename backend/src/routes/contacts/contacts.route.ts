@@ -16,7 +16,7 @@ export function createContactsRouter(contacts: Collection<ContactDocument>) {
 
   /**
    usage: saves an approved person the agent can call.
-   req.body: name, phoneNumber, relation
+   req.body: name, phoneNumber
    res.body: { contact }
    */
   router.post('/', async (request, response) => {

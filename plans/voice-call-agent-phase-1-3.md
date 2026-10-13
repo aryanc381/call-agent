@@ -108,6 +108,7 @@ The TypeScript worker combines the task and referenced contact phone number, the
   },
   "question": "Can you bring a cake when you come home?",
   "context": "It is Aryan's birthday today and there is a small celebration at home.",
+  "completionCriteria": "Complete after the person clearly answers whether they can bring a cake; thank them and end the call.",
   "personality": "Warm, brief, respectful and conversational.",
   "isFirstCall": true
 }
@@ -368,11 +369,13 @@ Local launch: `cd bolna-service && uvicorn main:app --host 0.0.0.0 --port 8000`.
 
 ### Phase 3 — Vobiz integration
 
-Outcome: TypeScript initiates Vobiz calls, detects turn boundaries on documented media events, bridges each turn through the Python session contract, converts μ-law/PCM payloads, streams `playAudio` chunks back, and persists provider terminal state. Callback signature verification and result notifications remain before Phase 3 is complete.
+Outcome: TypeScript initiates Vobiz calls, detects turn boundaries on documented media events, bridges each turn through the Python session contract, converts μ-law/PCM payloads, streams `playAudio` chunks back, and persists provider terminal state. The LLM returns an answer plus a validated `intentComplete` decision; after the task's completion criteria are met, the final thanks is played to its checkpoint before TypeScript hangs up the active Vobiz call. Callback signature verification and result notifications remain before Phase 3 is complete.
 
 Prerequisites: Phases 1–2 plus Vobiz outbound-call, media-stream, and webhook documentation/credentials.
 
 Provider contract: Vobiz outbound calls use `POST /api/v1/Account/{authId}/Call/` with `X-Auth-ID` and `X-Auth-Token`; answer callbacks return VobizXML `<Stream bidirectional="true">` and media frames are base64 μ-law WebSocket events. The adapter and bridge must follow the official examples ([Vobiz Python example](https://github.com/vobiz-ai/Vobiz-Python-Voice-API-Example), [Vobiz streaming integration](https://www.vobiz.ai/integrations/pipecat/)).
+
+Intent completion: every new task supplies `completionCriteria`. The LLM returns JSON `{ "answer": string, "intentComplete": boolean }`; TypeScript accepts completion only for a non-empty caller transcript, plays the final answer, waits for the matching Vobiz `playedStream` checkpoint, then uses the documented active-call hangup operation (`DELETE /api/v1/Account/{authId}/Call/{callUuid}`). Missing/malformed LLM fields default to a clarification reply with `intentComplete: false`. The greeting cannot complete a task. The call UUID comes from the persisted Vobiz call record, never from the public media socket payload. See the [official Vobiz SDK hangup operation](https://github.com/vobiz-ai/Vobiz-Python-SDK).
 
 Verification: human E2E call results in either a completed task and accurate notification or a failed task and failure notification.
 
@@ -426,12 +429,18 @@ sequenceDiagram
   H->>B: session input + decoded audio
   B->>S: audio data URI
   S-->>B: transcript
-  B->>L: bounded prompt (contact, question, context, personality)
-  L-->>B: concise answer
+  B->>L: prompt + history + completion criteria
+  L-->>B: {answer, intentComplete}
   B->>T: answer text
   T-->>B: WAV bytes
-  B-->>H: transcript + answer + base64 audio
+  B-->>H: transcript + answer + intentComplete + base64 audio
   H-->>V: playAudio (base64 provider audio)
+  alt intentComplete is false
+    V->>H: next inbound audio turn
+  else intentComplete is true
+    V-->>H: playedStream checkpoint for final thanks
+    H->>V: DELETE active call (stored Vobiz call UUID)
+  end
   V->>H: hangup/stream-status callback
   H->>M: terminal state, transcript, answer, provider error
   W->>M: completion/failure + notification state
@@ -448,13 +457,14 @@ POST /v1/api/call-tasks
 
 Vobiz control plane
   services/vobiz.service.ts              # POST Account/{id}/Call/
+  services/vobiz.service.ts              # DELETE active Call/{callUuid} after final checkpoint
   routes/webhooks/vobiz.route.ts         # answer, stream-status, hangup
   realtime/vobiz-bolna.bridge.ts         # μ-law base64 decode/encode seam
 
 Phase 2 media plane
   bolna-service/main.py                  # POST /v1/sessions
   bolna-service/models.py                # TS ↔ Python request/response contract
-  bolna-service/orchestrator.py          # STT -> LLM -> TTS, one turn
+  bolna-service/orchestrator.py          # STT -> LLM decision -> TTS, one turn
   providers/cloudflare.py                # Grok STT + Workers AI
   providers/cartesia.py                  # WAV synthesis
   services/bolna-client.service.ts       # TypeScript HTTP boundary
@@ -470,6 +480,8 @@ Data ownership and failure boundaries:
 - The Python orchestrator performs exactly `audio → transcript → answer → WAV`.
   Provider failures become a failed media request; TypeScript records the task
   failure and private provider error.
+- The Python orchestrator carries the completion decision beside the spoken answer. It parses only a JSON object with a non-empty answer and boolean flag; invalid output becomes a safe clarification with `intentComplete=false`. The greeting and empty transcript cannot complete a task.
+- TypeScript is the only layer that hangs up the call. It requires a non-empty caller transcript, waits for Vobiz's matching playback checkpoint, and uses the stored provider call UUID for the authenticated REST hangup. A caller-supplied media event cannot choose the call ID to terminate.
 - MongoDB is the source of truth for task status and results. Redis is only the
   delivery/claim mechanism, so duplicate API requests or worker races cannot
   create a second call.

@@ -8,6 +8,7 @@ services:
       MONGODB_URI: mongodb://mongodb:27017/call-agent
       REDIS_URL: redis://redis:6379
       PERSONAL_API_KEY: ${PERSONAL_API_KEY:?Set PERSONAL_API_KEY in .env}
+      AGENT_PERSONALITY: ${AGENT_PERSONALITY:?Set AGENT_PERSONALITY in .env}
     ports:
       - "3000:3000"
     depends_on:

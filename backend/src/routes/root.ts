@@ -13,6 +13,7 @@ type RootRouterDependencies = {
   contacts: Collection<ContactDocument>;
   callTasks: Collection<CallTaskDocument>;
   queue: Queue<CallTaskJob>;
+  personality: string;
 };
 
 // Creates the versioned API router that mounts application routes.
@@ -21,6 +22,7 @@ export function createRootRouter({
   contacts,
   callTasks,
   queue,
+  personality,
 }: RootRouterDependencies) {
   const router = Router();
 
@@ -32,14 +34,14 @@ export function createRootRouter({
   router.use('/contacts', apiKeyAuth, createContactsRouter(contacts));
 
   /**
-   usage: mounts protected call-task creation and status routes.
+   usage: mounts protected calling routes.
    req.body: varies by call-task route
    res.body: varies by call-task route
    */
   router.use(
-    '/call-tasks',
+    '/calls',
     apiKeyAuth,
-    createCallTasksRouter({ contacts, callTasks, queue }),
+    createCallTasksRouter({ contacts, callTasks, queue, personality }),
   );
 
   return router;

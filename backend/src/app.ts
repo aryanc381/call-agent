@@ -14,7 +14,8 @@ type AppDependencies = {
   callTasks: Collection<CallTaskDocument>;
   queue: Queue<CallTaskJob>;
   isReady: () => Promise<boolean>;
-  publicBaseUrl?: string;
+  personality: string;
+  publicBaseUrl: string;
 };
 
 // Creates the HTTP application with public health routes and protected application routes.
@@ -24,6 +25,7 @@ export function createApp({
   callTasks,
   queue,
   isReady,
+  personality,
   publicBaseUrl,
 }: AppDependencies) {
   const app = express();
@@ -43,7 +45,7 @@ export function createApp({
   });
 
   /**
-   usage: confirms that MongoDB and Redis are reachable.
+   usage: confirms that MongoDB is reachable.
    req.body: none
    res.body: { status }
    */
@@ -65,7 +67,7 @@ export function createApp({
    */
   app.use(
     '/v1/api',
-    createRootRouter({ apiKeyAuth, contacts, callTasks, queue }),
+    createRootRouter({ apiKeyAuth, contacts, callTasks, queue, personality }),
   );
 
   return app;
